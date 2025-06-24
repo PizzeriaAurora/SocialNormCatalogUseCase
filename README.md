@@ -173,9 +173,6 @@ If you use these models in your research, please cite the accompanying paper:
 ## Contact
 
 For any questions regarding this artifact, please contact:
-**Name Lastname**
-📧 `{name.last_name}@university.com`
-
-```
+**Name Lastname** `{name.last_name}@university.com`
 
 
