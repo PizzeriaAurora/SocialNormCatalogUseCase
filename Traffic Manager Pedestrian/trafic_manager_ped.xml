@@ -1,0 +1,737 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>
+typedef struct
+{
+    int id;
+    int lane;
+    int direction;
+    bool isCrossing;
+    bool wait_for_retry;
+    bool isWaiting;
+    bool isApproaching;
+    int role;
+    bool hasCrossed;
+} car;
+
+clock  clk, clk1, clk2, clk3;
+clock cross_clock1,cross_clock2,cross_clock3;
+clock manager_clk;
+chan request, grant, retry, dataReady, leave, stopWaiting;
+bool conflict;
+
+broadcast chan humanInComing,letPass, giveUp, letNotPass, crossed;
+
+bool hasGrantedSlot; 
+
+
+const int STANDARD=1;
+const int DEFERENTIAL=2;
+
+int data_lane = 0; // current lane
+int data_direction = 0; // target
+int data_veh_id = 0; 
+
+
+
+
+int route[2][2]; // 2 lane, each lane has 2 route .....make sense? 
+
+void check_conflict() // the logic is not well planned
+{    
+    if( route[data_lane][data_direction] != 1){
+       route[data_lane][data_direction] = 1;
+        conflict = false;
+    }
+    else{
+        conflict = true;
+    }
+}
+
+
+
+void send_data(car veh)
+{
+    data_lane = veh.lane;
+    data_direction = veh.direction;
+    data_veh_id = veh.id; 
+}
+
+void clear_request(car veh){
+    route[veh.lane][veh.direction] = 0;
+}
+
+
+car veh1 = {0,0,1, false, false, false, false, STANDARD, false};
+car veh2 = {1,0,1, false, false,false, false, STANDARD, false};
+car veh3 = {2,0,1, false, false, false, false, STANDARD, false};</declaration>
+	<template>
+		<name>Obs1</name>
+		<parameter>car &amp;veh1, car &amp;veh2</parameter>
+		<location id="id0" x="-996" y="-296">
+			<label kind="exponentialrate" x="-1006" y="-262">1</label>
+		</location>
+		<location id="id1" x="-644" y="-297">
+			<name x="-654" y="-331">Error</name>
+			<label kind="exponentialrate" x="-654" y="-263">1</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-932" y="-348">veh1.isCrossing and 
+veh2.isCrossing</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs2</name>
+		<location id="id3" x="-864" y="-234">
+			<label kind="exponentialrate" x="-874" y="-200">1</label>
+		</location>
+		<location id="id4" x="-512" y="-235">
+			<name x="-522" y="-269">Error</name>
+			<label kind="exponentialrate" x="-522" y="-201">1</label>
+		</location>
+		<init ref="id3"/>
+		<transition id="id5">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-800" y="-286">hasGrantedSlot and 
+manager_clk &lt; 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs3</name>
+		<location id="id6" x="-803" y="-364">
+			<label kind="exponentialrate" x="-813" y="-330">1</label>
+		</location>
+		<location id="id7" x="-519" y="-367">
+			<name x="-529" y="-401">Error</name>
+			<label kind="exponentialrate" x="-529" y="-333">1</label>
+		</location>
+		<location id="id8" x="-520" y="-178">
+			<label kind="exponentialrate" x="-530" y="-144">1</label>
+		</location>
+		<init ref="id6"/>
+		<transition id="id9">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-780" y="-268">data_veh_id != 0</label>
+			<nail x="-669" y="-279"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-519" y="-306">data_veh_id == 0</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-785" y="-400">hasGrantedSlot</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs4</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id12" x="-630" y="-275">
+			<label kind="exponentialrate" x="-640" y="-241">1</label>
+		</location>
+		<location id="id13" x="-914" y="-272">
+			<label kind="exponentialrate" x="-924" y="-238">1</label>
+		</location>
+		<location id="id14" x="-631" y="-86">
+			<name x="-634" y="-66">Error</name>
+			<label kind="exponentialrate" x="-641" y="-52">1</label>
+		</location>
+		<init ref="id13"/>
+		<transition id="id15">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-861" y="-182">vehi_clk_v&lt;=10</label>
+			<nail x="-780" y="-187"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-612" y="-257">vehi_clk_v&gt;=10 and 
+veh1.wait_for_retry</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-857" y="-299">veh1.wait_for_retry</label>
+			<label kind="assignment" x="-784" y="-272">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs4Alt</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id18" x="-85" y="-279">
+			<label kind="invariant" x="-95" y="-262">x&lt;=10</label>
+			<label kind="exponentialrate" x="-95" y="-245">1</label>
+		</location>
+		<location id="id19" x="-369" y="-276">
+			<label kind="exponentialrate" x="-379" y="-242">1</label>
+		</location>
+		<location id="id20" x="-86" y="-90">
+			<name x="-96" y="-124">Error</name>
+			<label kind="exponentialrate" x="-96" y="-56">1</label>
+		</location>
+		<init ref="id19"/>
+		<transition id="id21">
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-246" y="-186">stopWaiting?</label>
+			<nail x="-235" y="-191"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id18"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-85" y="-218">x&gt;=10</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id19"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-312" y="-303">veh1.wait_for_retry</label>
+			<label kind="assignment" x="-239" y="-276">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs5</name>
+		<parameter>car &amp;veh1, car &amp;veh2</parameter>
+		<location id="id24" x="-964" y="-599">
+			<label kind="exponentialrate" x="-974" y="-565">1</label>
+		</location>
+		<location id="id25" x="-1358" y="-601">
+			<label kind="exponentialrate" x="-1368" y="-567">1</label>
+		</location>
+		<location id="id26" x="-965" y="-410">
+			<name x="-905" y="-429">Error</name>
+			<label kind="exponentialrate" x="-975" y="-376">1</label>
+		</location>
+		<init ref="id25"/>
+		<transition id="id27">
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-1155" y="-451">veh1.isCrossing</label>
+			<nail x="-1119" y="-464"/>
+		</transition>
+		<transition id="id28">
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-1208" y="-565">veh1.isCrossing</label>
+			<nail x="-1114" y="-511"/>
+		</transition>
+		<transition id="id29">
+			<source ref="id24"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-964" y="-538">veh1.isCrossing and veh2.isCrossing</label>
+		</transition>
+		<transition id="id30">
+			<source ref="id25"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-1288" y="-625">veh1.isWaiting and veh2.isWaiting</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs6</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<location id="id31" x="-688" y="-359">
+			<label kind="exponentialrate" x="-698" y="-325">1</label>
+		</location>
+		<location id="id32" x="-1082" y="-361">
+			<label kind="exponentialrate" x="-1092" y="-327">1</label>
+		</location>
+		<location id="id33" x="-689" y="-170">
+			<name x="-629" y="-189">Error</name>
+			<label kind="exponentialrate" x="-699" y="-136">1</label>
+		</location>
+		<init ref="id32"/>
+		<transition id="id34">
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="guard" x="-924" y="-213">veh1.isApproaching</label>
+			<nail x="-843" y="-224"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-688" y="-298">!veh1.isApproaching</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id32"/>
+			<target ref="id31"/>
+			<label kind="guard" x="-1045" y="-391">veh1.wait_for_retry and vehi_clk_v&gt;=10</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs7</name>
+		<declaration>clock t;
+int social_cost;</declaration>
+		<location id="id37" x="-404" y="-248">
+			<name x="-414" y="-282">Count</name>
+			<label kind="invariant" x="-414" y="-231">t&lt;=1</label>
+			<urgent/>
+		</location>
+		<location id="id38" x="-805" y="-245">
+			<name x="-817" y="-283">Ok</name>
+			<label kind="exponentialrate" x="-812" y="-201">1</label>
+		</location>
+		<init ref="id38"/>
+		<transition id="id39">
+			<source ref="id37"/>
+			<target ref="id38"/>
+			<label kind="assignment" x="-693" y="-159">social_cost+=1</label>
+			<nail x="-629" y="-162"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-682" y="-300">social_cost&lt;=30</label>
+			<label kind="synchronisation" x="-680" y="-275">giveUp?</label>
+			<label kind="assignment" x="-738" y="-264">t:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs8</name>
+		<location id="id41" x="-916" y="-161">
+			<label kind="exponentialrate" x="-926" y="-127">1</label>
+		</location>
+		<location id="id42" x="-509" y="-162">
+			<name x="-519" y="-196">NotPass</name>
+			<label kind="exponentialrate" x="-519" y="-128">1</label>
+		</location>
+		<location id="id43" x="-735" y="-162">
+			<label kind="exponentialrate" x="-745" y="-128">1</label>
+		</location>
+		<init ref="id41"/>
+		<transition id="id44">
+			<source ref="id43"/>
+			<target ref="id41"/>
+			<label kind="synchronisation" x="-762" y="-115">letPass?</label>
+			<nail x="-854" y="-61"/>
+		</transition>
+		<transition id="id45">
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="-697" y="-185">letNotPass?</label>
+		</transition>
+		<transition id="id46">
+			<source ref="id41"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="-931" y="-219">humanInComing?</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs9</name>
+		<parameter>car &amp;veh1</parameter>
+		<location id="id47" x="-572" y="-193">
+			<label kind="exponentialrate" x="-582" y="-159">1</label>
+		</location>
+		<location id="id48" x="-966" y="-195">
+			<label kind="exponentialrate" x="-976" y="-161">1</label>
+		</location>
+		<init ref="id48"/>
+		<transition id="id49">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-831" y="-39">veh1.role==STANDARD</label>
+			<nail x="-727" y="-58"/>
+		</transition>
+		<transition id="id50">
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-929" y="-225">veh1.role==DEFERENTIAL</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs10</name>
+		<parameter>car &amp;veh, clock &amp;cc</parameter>
+		<location id="id51" x="-418" y="-56">
+			<label kind="exponentialrate" x="-428" y="-22">1</label>
+		</location>
+		<location id="id52" x="-72" y="-51">
+			<label kind="exponentialrate" x="-93" y="-22">1</label>
+		</location>
+		<location id="id53" x="-71" y="93">
+			<name x="-43" y="64">Error</name>
+			<label kind="exponentialrate" x="-81" y="127">1</label>
+		</location>
+		<init ref="id51"/>
+		<transition id="id54">
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-389" y="74">cc&gt;=11
+and !veh.hasCrossed
+and veh.role==DEFERENTIAL</label>
+			<nail x="-223" y="78"/>
+		</transition>
+		<transition id="id55">
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-300" y="-34">veh.hasCrossed</label>
+			<nail x="-244" y="15"/>
+		</transition>
+		<transition id="id56">
+			<source ref="id52"/>
+			<target ref="id53"/>
+			<label kind="guard" x="-67" y="1">cc&gt;=11
+and !veh.hasCrossed
+and veh.role==STANDARD</label>
+		</transition>
+		<transition id="id57">
+			<source ref="id51"/>
+			<target ref="id52"/>
+			<label kind="guard" x="-286" y="-136">veh.isCrossing</label>
+			<nail x="-236" y="-114"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">vehicle</name>
+		<parameter>car &amp;veh, clock &amp;clk_v, clock &amp;cross_clock</parameter>
+		<declaration>// Place local declarations here.
+bool has_waited = false;
+bool was_granted_access = false;
+
+clock cc;</declaration>
+		<location id="id58" x="-537" y="-75">
+			<name x="-588" y="-118">Approaching</name>
+			<label kind="exponentialrate" x="-547" y="-41">1</label>
+		</location>
+		<location id="id59" x="-72" y="-76">
+			<name x="-82" y="-110">wait</name>
+			<label kind="exponentialrate" x="-82" y="-42">1</label>
+		</location>
+		<location id="id60" x="95" y="-76">
+			<name x="90" y="-50">cross</name>
+			<label kind="invariant" x="55" y="-66">cc&lt;=9</label>
+			<label kind="exponentialrate" x="85" y="-42">1</label>
+		</location>
+		<location id="id61" x="-317" y="-76">
+			<name x="-343" y="-110">send_request</name>
+			<label kind="exponentialrate" x="-325" y="-32">1</label>
+		</location>
+		<location id="id62" x="365" y="-76">
+			<name x="355" y="-110">exit</name>
+			<label kind="exponentialrate" x="355" y="-42">1</label>
+		</location>
+		<location id="id63" x="-266" y="59">
+			<name x="-309" y="76">wait_retry</name>
+			<label kind="invariant" x="-299" y="108">clk_v&lt;=5</label>
+			<label kind="exponentialrate" x="-276" y="93">1</label>
+		</location>
+		<location id="id64" x="88" y="-222">
+			<name x="-33" y="-263">DecisionPoint</name>
+			<label kind="exponentialrate" x="100" y="-186">0.5</label>
+			<committed/>
+		</location>
+		<location id="id65" x="248" y="-223">
+			<name x="238" y="-257">WaitForHuman</name>
+			<label kind="exponentialrate" x="238" y="-189">1</label>
+		</location>
+		<init ref="id58"/>
+		<transition id="id66">
+			<source ref="id65"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="170" y="-151">crossed?</label>
+			<label kind="assignment" x="147" y="-123">cc:=0</label>
+		</transition>
+		<transition id="id67">
+			<source ref="id64"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="75" y="-157">letNotPass!</label>
+		</transition>
+		<transition id="id68">
+			<source ref="id64"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="99" y="-243">letPass!</label>
+			<label kind="assignment" x="82" y="-267">veh.role = DEFERENTIAL</label>
+		</transition>
+		<transition id="id69">
+			<source ref="id60"/>
+			<target ref="id64"/>
+			<label kind="synchronisation" x="-80" y="-199">humanInComing?</label>
+			<label kind="comments" x="-261" y="-295">We let falso to test obs10</label>
+			<nail x="24" y="-141"/>
+		</transition>
+		<transition id="id70">
+			<source ref="id63"/>
+			<target ref="id58"/>
+			<label kind="guard" x="-524" y="12">clk_v &gt;= 5</label>
+			<label kind="synchronisation" x="-539" y="-20">stopWaiting!</label>
+			<label kind="assignment" x="-578" y="36">veh.wait_for_retry=false, 
+clk_v:=0, 
+veh.isApproaching=true</label>
+		</transition>
+		<transition id="id71">
+			<source ref="id59"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="-127" y="-17">retry?</label>
+			<label kind="assignment" x="-199" y="31">clk_v:=0,
+veh.wait_for_retry=true,
+veh.isWaiting=false</label>
+		</transition>
+		<transition id="id72">
+			<source ref="id60"/>
+			<target ref="id62"/>
+			<label kind="guard" x="192" y="-99">cc&gt;=5</label>
+			<label kind="synchronisation" x="231" y="-117">leave!</label>
+			<label kind="assignment" x="174" y="-53">clear_request(veh), 
+veh.isCrossing=false, 
+veh.hasCrossed=true,
+cross_clock = cc</label>
+		</transition>
+		<transition id="id73">
+			<source ref="id59"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="-42" y="-102">grant?</label>
+			<label kind="assignment" x="-64" y="-50">has_waited:=true,
+was_granted_access=true, 
+veh.isCrossing=true, 
+veh.isWaiting=false,
+cross_clock:=0,
+cc:=0</label>
+		</transition>
+		<transition id="id74">
+			<source ref="id61"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="-218" y="-60">dataReady!</label>
+			<label kind="assignment" x="-270" y="-76">veh.isWaiting:=true</label>
+		</transition>
+		<transition id="id75">
+			<source ref="id58"/>
+			<target ref="id61"/>
+			<label kind="synchronisation" x="-482" y="-115">request!</label>
+			<label kind="assignment" x="-430" y="-67">send_data(veh),
+veh.isApproaching=false</label>
+		</transition>
+	</template>
+	<template>
+		<name>Pedestrian</name>
+		<declaration>clock x;</declaration>
+		<location id="id76" x="-453" y="-136">
+			<label kind="exponentialrate" x="-463" y="-102">1</label>
+		</location>
+		<location id="id77" x="-197" y="-143">
+			<name x="-207" y="-177">Approaching</name>
+			<label kind="exponentialrate" x="-207" y="-109">1</label>
+		</location>
+		<location id="id78" x="-356" y="-57">
+			<name x="-388" y="-42">isPassing</name>
+			<label kind="exponentialrate" x="-366" y="-23">1</label>
+		</location>
+		<location id="id79" x="-360" y="27">
+			<label kind="exponentialrate" x="-370" y="61">1</label>
+			<committed/>
+		</location>
+		<init ref="id76"/>
+		<transition id="id80">
+			<source ref="id79"/>
+			<target ref="id76"/>
+		</transition>
+		<transition id="id81">
+			<source ref="id77"/>
+			<target ref="id79"/>
+			<label kind="guard" x="-309" y="43">x&gt;=3</label>
+			<label kind="synchronisation" x="-281" y="3">giveUp!</label>
+			<nail x="-191" y="41"/>
+		</transition>
+		<transition id="id82">
+			<source ref="id78"/>
+			<target ref="id76"/>
+			<label kind="synchronisation" x="-435" y="-113">crossed!</label>
+		</transition>
+		<transition id="id83">
+			<source ref="id77"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="-289" y="-89">letPass?</label>
+		</transition>
+		<transition id="id84">
+			<source ref="id76"/>
+			<target ref="id77"/>
+			<label kind="synchronisation" x="-413" y="-228">humanInComing!</label>
+			<label kind="assignment" x="-435" y="-167">x:=0</label>
+			<nail x="-350" y="-199"/>
+		</transition>
+	</template>
+	<template>
+		<name>intersection_manager</name>
+		<parameter>clock &amp;clk</parameter>
+		<location id="id85" x="-841" y="-272">
+			<name x="-901" y="-280">idle</name>
+			<label kind="exponentialrate" x="-851" y="-238">1</label>
+		</location>
+		<location id="id86" x="-493" y="-272">
+			<name x="-459" y="-280">checkConflicts</name>
+			<label kind="exponentialrate" x="-503" y="-238">1</label>
+		</location>
+		<location id="id87" x="-664" y="-119">
+			<name x="-698" y="-93">grantSlot</name>
+			<label kind="invariant" x="-748" y="-115">clk&lt;=1</label>
+			<label kind="exponentialrate" x="-674" y="-85">1</label>
+		</location>
+		<location id="id88" x="-671" y="-416">
+			<name x="-697" y="-459">sendRetry</name>
+			<label kind="exponentialrate" x="-681" y="-382">1</label>
+		</location>
+		<location id="id89" x="-689" y="-272">
+			<name x="-706" y="-314">wait</name>
+		</location>
+		<location id="id90" x="-977" y="-272">
+			<name x="-1045" y="-280">reset</name>
+			<label kind="exponentialrate" x="-987" y="-238">1</label>
+		</location>
+		<location id="id91" x="-802" y="-165">
+			<name x="-812" y="-199">SlotGranted</name>
+			<label kind="exponentialrate" x="-812" y="-131">1</label>
+			<committed/>
+		</location>
+		<init ref="id85"/>
+		<transition id="id92">
+			<source ref="id87"/>
+			<target ref="id91"/>
+			<label kind="guard" x="-814" y="-127">clk&gt;=1</label>
+			<label kind="assignment" x="-910" y="-107">hasGrantedSlot=true</label>
+		</transition>
+		<transition id="id93">
+			<source ref="id90"/>
+			<target ref="id85"/>
+			<nail x="-909" y="-221"/>
+		</transition>
+		<transition id="id94">
+			<source ref="id85"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="-943" y="-340">leave?</label>
+			<nail x="-909" y="-314"/>
+		</transition>
+		<transition id="id95">
+			<source ref="id89"/>
+			<target ref="id86"/>
+			<label kind="synchronisation" x="-654" y="-297">dataReady?</label>
+			<label kind="assignment" x="-670" y="-272">check_conflict()</label>
+		</transition>
+		<transition id="id96">
+			<source ref="id88"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="-816" y="-373">retry!</label>
+		</transition>
+		<transition id="id97">
+			<source ref="id86"/>
+			<target ref="id88"/>
+			<label kind="guard" x="-586" y="-382">conflict == true</label>
+		</transition>
+		<transition id="id98">
+			<source ref="id86"/>
+			<target ref="id87"/>
+			<label kind="guard" x="-578" y="-170">conflict == false</label>
+			<label kind="assignment" x="-561" y="-194">clk:=0</label>
+		</transition>
+		<transition id="id99">
+			<source ref="id91"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="-882" y="-205">grant!</label>
+			<label kind="assignment" x="-992" y="-189">hasGrantedSlot=false</label>
+		</transition>
+		<transition id="id100">
+			<source ref="id85"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="-799" y="-306">request?</label>
+			<nail x="-773" y="-272"/>
+		</transition>
+	</template>
+	<system>
+vehi1 = vehicle(veh1, clk1, cross_clock1);
+vehi2 = vehicle(veh2, clk2,cross_clock2);
+vehi3 = vehicle(veh3, clk3,cross_clock3);
+manager = intersection_manager(manager_clk);
+ped = Pedestrian();
+
+obs1 = Obs1(veh1, veh2);
+obs2 = Obs2();
+obs3 = Obs3();
+obs4 = Obs4(veh1, clk1);
+obs4alt = Obs4Alt(veh1, clk1);
+obs5 = Obs5(veh1, veh2);
+obs6 = Obs6(veh1, clk1);
+obs7 = Obs7();
+obs8 = Obs8();
+obs10 = Obs10(veh1, cross_clock1);
+system vehi1, vehi2, vehi3, manager,ped,obs7, obs8, obs10,obs1, obs2, obs3,obs4,obs4alt, obs5, obs6;</system>
+	<queries>
+		<query>
+			<formula>A[] not obs1.Error</formula>
+			<comment>Social Expectation: The manager must never grant access to the same route to two different vehicles simultaneously. This is the fundamental safety property of the intersection.</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:08:59 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs2.Error</formula>
+			<comment>The manager shouldn't rapidly grant and then revoke access, or send conflicting signals. This creates confusion and hesitant, unsafe driving.</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:09:25 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs3.Error</formula>
+			<comment>The manager should not grant access to a vehicle that hasn't requested it. This prevents spurious or ghost grants.</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:09:51 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs4.Error</formula>
+			<comment>The 10-second back-off period should be respected. A vehicle shouldn't decide to wait even longer.</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:10:17 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs4alt.Error</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:10:43 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs5.Error</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:11:09 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs6.Error</formula>
+			<comment>Social Expectation: After the back-off period is over, a vehicle should promptly re-submit its request to not waste time.
+
+A[] (vehi1.wait_retry and vehi1.clk_v &gt;= 10) imply A&lt;&gt; vehi1.Approaching</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:11:35 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not obs10.Error</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>A[] !obs8.NotPass //Should fail, since it is not taking care of the role</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} //will not work unless all chans are broadcast</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>strategy Finish = control : A&lt;&gt;(vehi1.exit and vehi2.exit and vehi3.exit)//will not work unless all chans are broadcast</formula>
+			<comment>A[] forall(i:id_t) forall(j:id_t) Train(i).Cross &amp;&amp; Train(j)…</comment>
+		</query>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} under Finish//will not work unless all chans are broadcast</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>strategy SA = control : A[] !obs8.NotPass under Finish//will not work unless all chans are broadcast</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} under SA//will not work unless all chans are broadcast</formula>
+			<comment/>
+		</query>
+	</queries>
+</nta>

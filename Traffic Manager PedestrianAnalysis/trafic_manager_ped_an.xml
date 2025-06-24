@@ -1,0 +1,5049 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>
+typedef struct
+{
+    int id;
+    int lane;
+    int direction;
+    bool isCrossing;
+    bool wait_for_retry;
+    bool isWaiting;
+    bool isApproaching;
+    int role;
+    bool hasCrossed;
+} car;
+
+clock  clk, clk1, clk2, clk3;
+clock cross_clock1,cross_clock2,cross_clock3;
+clock manager_clk;
+broadcast chan request, grant, retry, dataReady, leave, stopWaiting;
+bool conflict;
+
+broadcast chan humanInComing,letPass, giveUp, letNotPass, crossed;
+
+bool hasGrantedSlot; 
+
+
+const int STANDARD=1;
+const int SOCIALLYAWARE=2;
+
+int data_lane = 0; // current lane
+int data_direction = 0; // target
+int data_veh_id = 0; 
+
+
+
+
+int route[2][2]; // 2 lane, each lane has 2 route .....make sense? 
+
+void check_conflict() // the logic is not well planned
+{    
+    if( route[data_lane][data_direction] != 1){
+       route[data_lane][data_direction] = 1;
+        conflict = false;
+    }
+    else{
+        conflict = true;
+    }
+}
+
+
+
+void send_data(car veh)
+{
+    data_lane = veh.lane;
+    data_direction = veh.direction;
+    data_veh_id = veh.id; 
+}
+
+void clear_request(car veh){
+    route[veh.lane][veh.direction] = 0;
+}
+
+
+car veh1 = {0,0,1, false, false, false, false, STANDARD, false};
+car veh2 = {1,0,1, false, false,false, false, STANDARD, false};
+car veh3 = {2,0,1, false, false, false, false, STANDARD, false};</declaration>
+	<template>
+		<name>Obs1</name>
+		<parameter>car &amp;veh1, car &amp;veh2</parameter>
+		<location id="id0" x="-996" y="-296">
+			<label kind="exponentialrate" x="-1006" y="-262">1</label>
+		</location>
+		<location id="id1" x="-644" y="-297">
+			<name x="-654" y="-331">Error</name>
+			<label kind="exponentialrate" x="-654" y="-263">1</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-932" y="-348">veh1.isCrossing and 
+veh2.isCrossing</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs2</name>
+		<location id="id3" x="-864" y="-234">
+			<label kind="exponentialrate" x="-874" y="-200">1</label>
+		</location>
+		<location id="id4" x="-512" y="-235">
+			<name x="-522" y="-269">Error</name>
+			<label kind="exponentialrate" x="-522" y="-201">1</label>
+		</location>
+		<init ref="id3"/>
+		<transition id="id5">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-800" y="-286">hasGrantedSlot and 
+manager_clk &lt; 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs3</name>
+		<location id="id6" x="-803" y="-364">
+			<label kind="exponentialrate" x="-813" y="-330">1</label>
+		</location>
+		<location id="id7" x="-519" y="-367">
+			<name x="-529" y="-401">Error</name>
+			<label kind="exponentialrate" x="-529" y="-333">1</label>
+		</location>
+		<location id="id8" x="-520" y="-178">
+			<label kind="exponentialrate" x="-530" y="-144">1</label>
+		</location>
+		<init ref="id6"/>
+		<transition id="id9">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-780" y="-268">data_veh_id != 0</label>
+			<nail x="-669" y="-279"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-519" y="-306">data_veh_id == 0</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-785" y="-400">hasGrantedSlot</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs4</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id12" x="-630" y="-275">
+			<label kind="exponentialrate" x="-640" y="-241">1</label>
+		</location>
+		<location id="id13" x="-914" y="-272">
+			<label kind="exponentialrate" x="-924" y="-238">1</label>
+		</location>
+		<location id="id14" x="-631" y="-86">
+			<name x="-634" y="-66">Error</name>
+			<label kind="exponentialrate" x="-641" y="-52">1</label>
+		</location>
+		<init ref="id13"/>
+		<transition id="id15">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-861" y="-182">vehi_clk_v&lt;=10</label>
+			<nail x="-780" y="-187"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-612" y="-257">vehi_clk_v&gt;=10 and 
+veh1.wait_for_retry</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-857" y="-299">veh1.wait_for_retry</label>
+			<label kind="assignment" x="-784" y="-272">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs4Alt</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id18" x="-85" y="-279">
+			<label kind="invariant" x="-95" y="-262">x&lt;=10</label>
+			<label kind="exponentialrate" x="-95" y="-245">1</label>
+		</location>
+		<location id="id19" x="-369" y="-276">
+			<label kind="exponentialrate" x="-379" y="-242">1</label>
+		</location>
+		<location id="id20" x="-86" y="-90">
+			<name x="-96" y="-124">Error</name>
+			<label kind="exponentialrate" x="-96" y="-56">1</label>
+		</location>
+		<init ref="id19"/>
+		<transition id="id21">
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-246" y="-186">stopWaiting?</label>
+			<nail x="-235" y="-191"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id18"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-85" y="-218">x&gt;=10</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id19"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-312" y="-303">veh1.wait_for_retry</label>
+			<label kind="assignment" x="-239" y="-276">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs5</name>
+		<parameter>car &amp;veh1, car &amp;veh2</parameter>
+		<location id="id24" x="-964" y="-599">
+			<label kind="exponentialrate" x="-974" y="-565">1</label>
+		</location>
+		<location id="id25" x="-1358" y="-601">
+			<label kind="exponentialrate" x="-1368" y="-567">1</label>
+		</location>
+		<location id="id26" x="-965" y="-410">
+			<name x="-905" y="-429">Error</name>
+			<label kind="exponentialrate" x="-975" y="-376">1</label>
+		</location>
+		<init ref="id25"/>
+		<transition id="id27">
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-1155" y="-451">veh1.isCrossing</label>
+			<nail x="-1119" y="-464"/>
+		</transition>
+		<transition id="id28">
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-1208" y="-565">veh1.isCrossing</label>
+			<nail x="-1114" y="-511"/>
+		</transition>
+		<transition id="id29">
+			<source ref="id24"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-964" y="-538">veh1.isCrossing and veh2.isCrossing</label>
+		</transition>
+		<transition id="id30">
+			<source ref="id25"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-1288" y="-625">veh1.isWaiting and veh2.isWaiting</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs6</name>
+		<parameter>car &amp;veh1, clock &amp;vehi_clk_v</parameter>
+		<location id="id31" x="-688" y="-359">
+			<label kind="exponentialrate" x="-698" y="-325">1</label>
+		</location>
+		<location id="id32" x="-1082" y="-361">
+			<label kind="exponentialrate" x="-1092" y="-327">1</label>
+		</location>
+		<location id="id33" x="-689" y="-170">
+			<name x="-629" y="-189">Error</name>
+			<label kind="exponentialrate" x="-699" y="-136">1</label>
+		</location>
+		<init ref="id32"/>
+		<transition id="id34">
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="guard" x="-924" y="-213">veh1.isApproaching</label>
+			<nail x="-843" y="-224"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-688" y="-298">!veh1.isApproaching</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id32"/>
+			<target ref="id31"/>
+			<label kind="guard" x="-1045" y="-391">veh1.wait_for_retry and vehi_clk_v&gt;=10</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs7</name>
+		<declaration>clock t;
+int social_cost;</declaration>
+		<location id="id37" x="-404" y="-248">
+			<name x="-414" y="-282">Count</name>
+			<label kind="invariant" x="-414" y="-231">t&lt;=1</label>
+			<urgent/>
+		</location>
+		<location id="id38" x="-805" y="-245">
+			<name x="-817" y="-283">Ok</name>
+			<label kind="exponentialrate" x="-812" y="-201">1</label>
+		</location>
+		<init ref="id38"/>
+		<transition id="id39">
+			<source ref="id37"/>
+			<target ref="id38"/>
+			<label kind="assignment" x="-693" y="-159">social_cost+=1</label>
+			<nail x="-629" y="-162"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-682" y="-300">social_cost&lt;=30</label>
+			<label kind="synchronisation" x="-680" y="-275">giveUp?</label>
+			<label kind="assignment" x="-738" y="-264">t:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs8</name>
+		<location id="id41" x="-916" y="-161">
+			<label kind="exponentialrate" x="-926" y="-127">1</label>
+		</location>
+		<location id="id42" x="-509" y="-162">
+			<name x="-519" y="-196">NotPass</name>
+			<label kind="exponentialrate" x="-519" y="-128">1</label>
+		</location>
+		<location id="id43" x="-735" y="-162">
+			<label kind="exponentialrate" x="-745" y="-128">1</label>
+		</location>
+		<init ref="id41"/>
+		<transition id="id44">
+			<source ref="id43"/>
+			<target ref="id41"/>
+			<label kind="synchronisation" x="-762" y="-115">letPass?</label>
+			<nail x="-854" y="-61"/>
+		</transition>
+		<transition id="id45">
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="-697" y="-185">letNotPass?</label>
+		</transition>
+		<transition id="id46">
+			<source ref="id41"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="-931" y="-219">humanInComing?</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs9</name>
+		<parameter>car &amp;veh1</parameter>
+		<location id="id47" x="-572" y="-193">
+			<label kind="exponentialrate" x="-582" y="-159">1</label>
+		</location>
+		<location id="id48" x="-966" y="-195">
+			<label kind="exponentialrate" x="-976" y="-161">1</label>
+		</location>
+		<init ref="id48"/>
+		<transition id="id49">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-831" y="-39">veh1.role==STANDARD</label>
+			<nail x="-727" y="-58"/>
+		</transition>
+		<transition id="id50">
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-929" y="-225">veh1.role==SOCIALLYAWARE</label>
+		</transition>
+	</template>
+	<template>
+		<name>Obs10</name>
+		<parameter>car &amp;veh, clock &amp;cc</parameter>
+		<location id="id51" x="-418" y="-56">
+			<label kind="exponentialrate" x="-428" y="-22">1</label>
+		</location>
+		<location id="id52" x="-72" y="-51">
+			<label kind="exponentialrate" x="-93" y="-22">1</label>
+		</location>
+		<location id="id53" x="-71" y="93">
+			<name x="-43" y="64">Error</name>
+			<label kind="exponentialrate" x="-81" y="127">1</label>
+		</location>
+		<init ref="id51"/>
+		<transition id="id54">
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-389" y="74">cc&gt;=11
+and !veh.hasCrossed
+and veh.role==SOCIALLYAWARE</label>
+			<nail x="-223" y="78"/>
+		</transition>
+		<transition id="id55">
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-300" y="-34">veh.hasCrossed</label>
+			<nail x="-244" y="15"/>
+		</transition>
+		<transition id="id56">
+			<source ref="id52"/>
+			<target ref="id53"/>
+			<label kind="guard" x="-67" y="1">cc&gt;=11
+and !veh.hasCrossed
+and veh.role==STANDARD</label>
+		</transition>
+		<transition id="id57">
+			<source ref="id51"/>
+			<target ref="id52"/>
+			<label kind="guard" x="-286" y="-136">veh.isCrossing</label>
+			<nail x="-236" y="-114"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">vehicle</name>
+		<parameter>car &amp;veh, clock &amp;clk_v, clock &amp;cross_clock</parameter>
+		<declaration>// Place local declarations here.
+bool has_waited = false;
+bool was_granted_access = false;
+
+clock cc;</declaration>
+		<location id="id58" x="-537" y="-75">
+			<name x="-588" y="-118">Approaching</name>
+			<label kind="exponentialrate" x="-547" y="-41">1</label>
+		</location>
+		<location id="id59" x="-72" y="-76">
+			<name x="-82" y="-110">wait</name>
+			<label kind="exponentialrate" x="-82" y="-42">1</label>
+		</location>
+		<location id="id60" x="95" y="-76">
+			<name x="90" y="-50">cross</name>
+			<label kind="invariant" x="55" y="-66">cc&lt;=9</label>
+			<label kind="exponentialrate" x="85" y="-42">1</label>
+		</location>
+		<location id="id61" x="-317" y="-76">
+			<name x="-343" y="-110">send_request</name>
+			<label kind="exponentialrate" x="-325" y="-32">1</label>
+		</location>
+		<location id="id62" x="365" y="-76">
+			<name x="355" y="-110">exit</name>
+			<label kind="exponentialrate" x="355" y="-42">1</label>
+		</location>
+		<location id="id63" x="-266" y="59">
+			<name x="-309" y="76">wait_retry</name>
+			<label kind="invariant" x="-299" y="108">clk_v&lt;=5</label>
+			<label kind="exponentialrate" x="-276" y="93">1</label>
+		</location>
+		<location id="id64" x="88" y="-222">
+			<name x="-33" y="-263">DecisionPoint</name>
+			<label kind="exponentialrate" x="100" y="-186">0.5</label>
+			<committed/>
+		</location>
+		<location id="id65" x="248" y="-223">
+			<name x="238" y="-257">WaitForHuman</name>
+			<label kind="exponentialrate" x="238" y="-189">1</label>
+		</location>
+		<init ref="id58"/>
+		<transition id="id66">
+			<source ref="id65"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="170" y="-151">crossed?</label>
+			<label kind="assignment" x="147" y="-123">cc:=0</label>
+		</transition>
+		<transition id="id67">
+			<source ref="id64"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="75" y="-157">letNotPass!</label>
+		</transition>
+		<transition id="id68">
+			<source ref="id64"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="99" y="-243">letPass!</label>
+			<label kind="assignment" x="82" y="-267">veh.role = SOCIALLYAWARE</label>
+		</transition>
+		<transition id="id69">
+			<source ref="id60"/>
+			<target ref="id64"/>
+			<label kind="synchronisation" x="-80" y="-199">humanInComing?</label>
+			<label kind="comments" x="-261" y="-295">We let falso to test obs10</label>
+			<nail x="24" y="-141"/>
+		</transition>
+		<transition id="id70">
+			<source ref="id63"/>
+			<target ref="id58"/>
+			<label kind="guard" x="-524" y="12">clk_v &gt;= 5</label>
+			<label kind="synchronisation" x="-539" y="-20">stopWaiting!</label>
+			<label kind="assignment" x="-578" y="36">veh.wait_for_retry=false, 
+clk_v:=0, 
+veh.isApproaching=true</label>
+		</transition>
+		<transition id="id71">
+			<source ref="id59"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="-127" y="-17">retry?</label>
+			<label kind="assignment" x="-199" y="31">clk_v:=0,
+veh.wait_for_retry=true,
+veh.isWaiting=false</label>
+		</transition>
+		<transition id="id72">
+			<source ref="id60"/>
+			<target ref="id62"/>
+			<label kind="guard" x="192" y="-99">cc&gt;=5</label>
+			<label kind="synchronisation" x="231" y="-117">leave!</label>
+			<label kind="assignment" x="174" y="-53">clear_request(veh), 
+veh.isCrossing=false, 
+veh.hasCrossed=true,
+cross_clock = cc</label>
+		</transition>
+		<transition id="id73">
+			<source ref="id59"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="-42" y="-102">grant?</label>
+			<label kind="assignment" x="-64" y="-50">has_waited:=true,
+was_granted_access=true, 
+veh.isCrossing=true, 
+veh.isWaiting=false,
+cross_clock:=0,
+cc:=0</label>
+		</transition>
+		<transition id="id74">
+			<source ref="id61"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="-218" y="-60">dataReady!</label>
+			<label kind="assignment" x="-270" y="-76">veh.isWaiting:=true</label>
+		</transition>
+		<transition id="id75">
+			<source ref="id58"/>
+			<target ref="id61"/>
+			<label kind="synchronisation" x="-482" y="-115">request!</label>
+			<label kind="assignment" x="-430" y="-67">send_data(veh),
+veh.isApproaching=false</label>
+		</transition>
+	</template>
+	<template>
+		<name>Pedestrian</name>
+		<declaration>clock x;</declaration>
+		<location id="id76" x="-453" y="-136">
+			<label kind="exponentialrate" x="-463" y="-102">1</label>
+		</location>
+		<location id="id77" x="-197" y="-143">
+			<name x="-207" y="-177">Approaching</name>
+			<label kind="exponentialrate" x="-207" y="-109">1</label>
+		</location>
+		<location id="id78" x="-356" y="-57">
+			<name x="-388" y="-42">isPassing</name>
+			<label kind="exponentialrate" x="-366" y="-23">1</label>
+		</location>
+		<location id="id79" x="-360" y="27">
+			<label kind="exponentialrate" x="-370" y="61">1</label>
+			<committed/>
+		</location>
+		<init ref="id76"/>
+		<transition id="id80">
+			<source ref="id79"/>
+			<target ref="id76"/>
+		</transition>
+		<transition id="id81">
+			<source ref="id77"/>
+			<target ref="id79"/>
+			<label kind="guard" x="-309" y="43">x&gt;=3</label>
+			<label kind="synchronisation" x="-281" y="3">giveUp!</label>
+			<nail x="-191" y="41"/>
+		</transition>
+		<transition id="id82">
+			<source ref="id78"/>
+			<target ref="id76"/>
+			<label kind="synchronisation" x="-435" y="-113">crossed!</label>
+		</transition>
+		<transition id="id83">
+			<source ref="id77"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="-289" y="-89">letPass?</label>
+		</transition>
+		<transition id="id84">
+			<source ref="id76"/>
+			<target ref="id77"/>
+			<label kind="synchronisation" x="-413" y="-228">humanInComing!</label>
+			<label kind="assignment" x="-435" y="-167">x:=0</label>
+			<nail x="-350" y="-199"/>
+		</transition>
+	</template>
+	<template>
+		<name>intersection_manager</name>
+		<parameter>clock &amp;clk</parameter>
+		<location id="id85" x="-841" y="-272">
+			<name x="-901" y="-280">idle</name>
+			<label kind="exponentialrate" x="-851" y="-238">1</label>
+		</location>
+		<location id="id86" x="-493" y="-272">
+			<name x="-459" y="-280">checkConflicts</name>
+			<label kind="exponentialrate" x="-503" y="-238">1</label>
+		</location>
+		<location id="id87" x="-664" y="-119">
+			<name x="-698" y="-93">grantSlot</name>
+			<label kind="invariant" x="-748" y="-115">clk&lt;=1</label>
+			<label kind="exponentialrate" x="-674" y="-85">1</label>
+		</location>
+		<location id="id88" x="-671" y="-416">
+			<name x="-697" y="-459">sendRetry</name>
+			<label kind="exponentialrate" x="-681" y="-382">1</label>
+		</location>
+		<location id="id89" x="-689" y="-272">
+			<name x="-706" y="-314">wait</name>
+		</location>
+		<location id="id90" x="-977" y="-272">
+			<name x="-1045" y="-280">reset</name>
+			<label kind="exponentialrate" x="-987" y="-238">1</label>
+		</location>
+		<location id="id91" x="-802" y="-165">
+			<name x="-812" y="-199">SlotGranted</name>
+			<label kind="exponentialrate" x="-812" y="-131">1</label>
+			<committed/>
+		</location>
+		<init ref="id85"/>
+		<transition id="id92">
+			<source ref="id87"/>
+			<target ref="id91"/>
+			<label kind="guard" x="-814" y="-127">clk&gt;=1</label>
+			<label kind="assignment" x="-910" y="-107">hasGrantedSlot=true</label>
+		</transition>
+		<transition id="id93">
+			<source ref="id90"/>
+			<target ref="id85"/>
+			<nail x="-909" y="-221"/>
+		</transition>
+		<transition id="id94">
+			<source ref="id85"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="-943" y="-340">leave?</label>
+			<nail x="-909" y="-314"/>
+		</transition>
+		<transition id="id95">
+			<source ref="id89"/>
+			<target ref="id86"/>
+			<label kind="synchronisation" x="-654" y="-297">dataReady?</label>
+			<label kind="assignment" x="-670" y="-272">check_conflict()</label>
+		</transition>
+		<transition id="id96">
+			<source ref="id88"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="-816" y="-373">retry!</label>
+		</transition>
+		<transition id="id97">
+			<source ref="id86"/>
+			<target ref="id88"/>
+			<label kind="guard" x="-586" y="-382">conflict == true</label>
+		</transition>
+		<transition id="id98">
+			<source ref="id86"/>
+			<target ref="id87"/>
+			<label kind="guard" x="-578" y="-170">conflict == false</label>
+			<label kind="assignment" x="-561" y="-194">clk:=0</label>
+		</transition>
+		<transition id="id99">
+			<source ref="id91"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="-882" y="-205">grant!</label>
+			<label kind="assignment" x="-992" y="-189">hasGrantedSlot=false</label>
+		</transition>
+		<transition id="id100">
+			<source ref="id85"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="-799" y="-306">request?</label>
+			<nail x="-773" y="-272"/>
+		</transition>
+	</template>
+	<system>
+vehi1 = vehicle(veh1, clk1, cross_clock1);
+vehi2 = vehicle(veh2, clk2,cross_clock2);
+vehi3 = vehicle(veh3, clk3,cross_clock3);
+manager = intersection_manager(manager_clk);
+ped = Pedestrian();
+
+obs1 = Obs1(veh1, veh2);
+obs2 = Obs2();
+obs3 = Obs3();
+obs4 = Obs4(veh1, clk1);
+obs4alt = Obs4Alt(veh1, clk1);
+obs5 = Obs5(veh1, veh2);
+obs6 = Obs6(veh1, clk1);
+obs7 = Obs7();
+obs8 = Obs8();
+obs10 = Obs10(veh1, cross_clock1);
+//system vehi1, vehi2, vehi3, manager,ped,obs7, obs8, obs10,obs1, obs2, obs3,obs4,obs4alt, obs5, obs6;
+system vehi1, vehi2, vehi3, manager,ped,obs7, obs8;</system>
+	<queries>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} //will not work unless all chans are broadcast</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:53:32 +0200">
+				<plot title="Simulations (100)" xaxis="time" yaxis="value">
+					<series title="obs7.social_cost" type="l" color="0xff0000" encoding="csv">0.0,0.0
+3.6736745368946506,0.0
+3.6736745368946506,1.0
+11.416417716797792,1.0
+11.416417716797792,2.0
+15.798773913786661,2.0
+15.798773913786661,3.0
+20.494531420225425,3.0
+20.494531420225425,4.0
+25.74053259538387,4.0
+25.74053259538387,5.0
+28.910247235420286,5.0
+28.910247235420286,6.0
+33.70900037982249,6.0
+33.70900037982249,7.0
+42.56205461535118,7.0
+42.56205461535118,8.0
+48.87249138406773,8.0
+48.87249138406773,9.0
+53.27358504900859,9.0
+53.27358504900859,10.0
+58.36433299484615,10.0
+58.36433299484615,11.0
+62.21751581480444,11.0
+62.21751581480444,12.0
+71.26256104744223,12.0
+71.26256104744223,13.0
+76.19087100761725,13.0
+76.19087100761725,14.0
+80.32287246211031,14.0
+80.32287246211031,15.0
+84.5552526513807,15.0
+84.5552526513807,16.0
+90.09651377248339,16.0
+90.09651377248339,17.0
+93.98773304468028,17.0
+93.98773304468028,18.0
+98.14960690761869,18.0
+98.14960690761869,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff0101" encoding="csv">0.0,0.0
+4.070183898559314,0.0
+4.070183898559314,1.0
+22.233883724364382,1.0
+22.233883724364382,2.0
+30.250839571424006,2.0
+30.250839571424006,3.0
+33.70232589877664,3.0
+33.70232589877664,4.0
+38.41113297184647,4.0
+38.41113297184647,5.0
+45.06486574374972,5.0
+45.06486574374972,6.0
+51.90889646088425,6.0
+51.90889646088425,7.0
+55.20434197028007,7.0
+55.20434197028007,8.0
+60.76633197997039,8.0
+60.76633197997039,9.0
+67.15140305749411,9.0
+67.15140305749411,10.0
+75.17297204324328,10.0
+75.17297204324328,11.0
+78.81899348263703,11.0
+78.81899348263703,12.0
+85.26039712956869,12.0
+85.26039712956869,13.0
+89.59929945176344,13.0
+89.59929945176344,14.0
+95.5885187849241,14.0
+95.5885187849241,15.0
+99.86305716084662,15.0
+99.86305716084662,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff0202" encoding="csv">0.0,0.0
+5.3096788815195675,0.0
+5.3096788815195675,1.0
+11.15993885876248,1.0
+11.15993885876248,2.0
+15.38751456240496,2.0
+15.38751456240496,3.0
+20.321485083083857,3.0
+20.321485083083857,4.0
+25.02445898353952,4.0
+25.02445898353952,5.0
+31.679342856178884,5.0
+31.679342856178884,6.0
+34.90818399400641,6.0
+34.90818399400641,7.0
+40.01549679020714,7.0
+40.01549679020714,8.0
+44.04246676053911,8.0
+44.04246676053911,9.0
+48.085801764147845,9.0
+48.085801764147845,10.0
+53.97146593597527,10.0
+53.97146593597527,11.0
+58.08675930198208,11.0
+58.08675930198208,12.0
+61.928600865093806,12.0
+61.928600865093806,13.0
+65.87293940079084,13.0
+65.87293940079084,14.0
+74.81383575285723,14.0
+74.81383575285723,15.0
+78.68858188565531,15.0
+78.68858188565531,16.0
+81.99209055735936,16.0
+81.99209055735936,17.0
+87.69209066140564,17.0
+87.69209066140564,18.0
+91.67293069268203,18.0
+91.67293069268203,19.0
+96.27476904645093,19.0
+96.27476904645093,20.0
+99.94560792960282,20.0
+99.94560792960282,21.0
+100.0,21.0
+					</series>
+					<series title="" type="l" color="0xff0303" encoding="csv">0.0,0.0
+3.896035302558075,0.0
+3.896035302558075,1.0
+6.9424178210559875,1.0
+6.9424178210559875,2.0
+21.000176062942174,2.0
+21.000176062942174,3.0
+28.227681307635134,3.0
+28.227681307635134,4.0
+33.06354243232984,4.0
+33.06354243232984,5.0
+36.52173151120219,5.0
+36.52173151120219,6.0
+42.0954826331863,6.0
+42.0954826331863,7.0
+46.63929718463601,7.0
+46.63929718463601,8.0
+54.96463527039092,8.0
+54.96463527039092,9.0
+59.22704952083005,9.0
+59.22704952083005,10.0
+64.21820046796347,10.0
+64.21820046796347,11.0
+73.23196871051218,11.0
+73.23196871051218,12.0
+77.90574219284422,12.0
+77.90574219284422,13.0
+82.87338908073133,13.0
+82.87338908073133,14.0
+89.30819824302851,14.0
+89.30819824302851,15.0
+92.83909620429918,15.0
+92.83909620429918,16.0
+97.96629997615997,16.0
+97.96629997615997,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+5.457788598801248,0.0
+5.457788598801248,1.0
+23.413619901709552,1.0
+23.413619901709552,2.0
+30.543783088747553,2.0
+30.543783088747553,3.0
+35.42788489433677,3.0
+35.42788489433677,4.0
+38.90114842722746,4.0
+38.90114842722746,5.0
+44.447527584163964,5.0
+44.447527584163964,6.0
+48.725099533027155,6.0
+48.725099533027155,7.0
+53.22860946828004,7.0
+53.22860946828004,8.0
+58.56588783073506,8.0
+58.56588783073506,9.0
+64.13067093513251,9.0
+64.13067093513251,10.0
+67.65368196759137,10.0
+67.65368196759137,11.0
+72.91417850202686,11.0
+72.91417850202686,12.0
+77.68416499845951,12.0
+77.68416499845951,13.0
+87.02506683632264,13.0
+87.02506683632264,14.0
+91.61925812839385,14.0
+91.61925812839385,15.0
+95.74621018291663,15.0
+95.74621018291663,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+5.569607121094837,0.0
+5.569607121094837,1.0
+9.283099858556724,1.0
+9.283099858556724,2.0
+15.331791257375352,2.0
+15.331791257375352,3.0
+19.591827428671067,3.0
+19.591827428671067,4.0
+23.522048370950387,4.0
+23.522048370950387,5.0
+27.025129888778736,5.0
+27.025129888778736,6.0
+32.41086247623354,6.0
+32.41086247623354,7.0
+35.827055063663536,7.0
+35.827055063663536,8.0
+39.70621997478368,8.0
+39.70621997478368,9.0
+44.70885364224934,9.0
+44.70885364224934,10.0
+48.49074519054629,10.0
+48.49074519054629,11.0
+54.43290593469132,11.0
+54.43290593469132,12.0
+59.74018145814563,12.0
+59.74018145814563,13.0
+64.7595675068837,13.0
+64.7595675068837,14.0
+69.71497958389662,14.0
+69.71497958389662,15.0
+75.39019776364148,15.0
+75.39019776364148,16.0
+80.25288810120173,16.0
+80.25288810120173,17.0
+84.67041986563501,17.0
+84.67041986563501,18.0
+88.8823593024772,18.0
+88.8823593024772,19.0
+96.32254493027408,19.0
+96.32254493027408,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff0505" encoding="csv">0.0,0.0
+3.5505196081737536,0.0
+3.5505196081737536,1.0
+16.539108368108575,1.0
+16.539108368108575,2.0
+22.1533093373305,2.0
+22.1533093373305,3.0
+26.40336583086134,3.0
+26.40336583086134,4.0
+32.239544974752825,4.0
+32.239544974752825,5.0
+39.13506642797612,5.0
+39.13506642797612,6.0
+43.25097027753538,6.0
+43.25097027753538,7.0
+47.33519902670216,7.0
+47.33519902670216,8.0
+51.73704295062227,8.0
+51.73704295062227,9.0
+56.42712072026938,9.0
+56.42712072026938,10.0
+62.25314951227387,10.0
+62.25314951227387,11.0
+68.80620906272394,11.0
+68.80620906272394,12.0
+77.04878511505979,12.0
+77.04878511505979,13.0
+81.79189502695557,13.0
+81.79189502695557,14.0
+87.10218586016471,14.0
+87.10218586016471,15.0
+90.8820418677921,15.0
+90.8820418677921,16.0
+96.5610269747651,16.0
+96.5610269747651,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff0606" encoding="csv">0.0,0.0
+3.776815093559798,0.0
+3.776815093559798,1.0
+8.943884571505432,1.0
+8.943884571505432,2.0
+23.028020903049928,2.0
+23.028020903049928,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0707" encoding="csv">0.0,0.0
+4.984339130602491,0.0
+4.984339130602491,1.0
+21.71549144600135,1.0
+21.71549144600135,2.0
+28.32094065411288,2.0
+28.32094065411288,3.0
+33.81934966678538,3.0
+33.81934966678538,4.0
+38.19171165128711,4.0
+38.19171165128711,5.0
+46.135588778546065,5.0
+46.135588778546065,6.0
+50.450216483430246,6.0
+50.450216483430246,7.0
+55.09207058591098,7.0
+55.09207058591098,8.0
+61.65182384627699,8.0
+61.65182384627699,9.0
+65.94905365894343,9.0
+65.94905365894343,10.0
+69.50705476087299,10.0
+69.50705476087299,11.0
+76.27085517674938,11.0
+76.27085517674938,12.0
+80.62501968737436,12.0
+80.62501968737436,13.0
+84.87566848455764,13.0
+84.87566848455764,14.0
+89.2211406227008,14.0
+89.2211406227008,15.0
+92.69461106828632,15.0
+92.69461106828632,16.0
+97.6518269501758,16.0
+97.6518269501758,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff0808" encoding="csv">0.0,0.0
+6.884709248762732,0.0
+6.884709248762732,1.0
+17.319975171456104,1.0
+17.319975171456104,2.0
+24.115594561477984,2.0
+24.115594561477984,3.0
+29.836995094004468,3.0
+29.836995094004468,4.0
+34.19699848045619,4.0
+34.19699848045619,5.0
+40.45332466369777,5.0
+40.45332466369777,6.0
+46.32123406037563,6.0
+46.32123406037563,7.0
+50.5666671502729,7.0
+50.5666671502729,8.0
+56.283676400399784,8.0
+56.283676400399784,9.0
+60.14954655765725,9.0
+60.14954655765725,10.0
+63.1853416628841,10.0
+63.1853416628841,11.0
+66.50540189773554,11.0
+66.50540189773554,12.0
+69.59863253848118,12.0
+69.59863253848118,13.0
+74.56011403929315,13.0
+74.56011403929315,14.0
+79.81739767908331,14.0
+79.81739767908331,15.0
+86.46388752575653,15.0
+86.46388752575653,16.0
+91.39364427568114,16.0
+91.39364427568114,17.0
+96.9064680051774,17.0
+96.9064680051774,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff0909" encoding="csv">0.0,0.0
+8.196945787071321,0.0
+8.196945787071321,1.0
+25.206471655213033,1.0
+25.206471655213033,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0a0a" encoding="csv">0.0,0.0
+6.305107951619089,0.0
+6.305107951619089,1.0
+9.749646497041619,1.0
+9.749646497041619,2.0
+16.707274558463975,2.0
+16.707274558463975,3.0
+22.603442297919038,3.0
+22.603442297919038,4.0
+25.800723105684995,4.0
+25.800723105684995,5.0
+30.99321617017776,5.0
+30.99321617017776,6.0
+35.26053992212816,6.0
+35.26053992212816,7.0
+41.729378258878,7.0
+41.729378258878,8.0
+45.71823589529158,8.0
+45.71823589529158,9.0
+50.596332201628705,9.0
+50.596332201628705,10.0
+54.80196318161216,10.0
+54.80196318161216,11.0
+61.547469384105845,11.0
+61.547469384105845,12.0
+66.37956509162056,12.0
+66.37956509162056,13.0
+76.82347378724384,13.0
+76.82347378724384,14.0
+80.11009287197479,14.0
+80.11009287197479,15.0
+85.01955771739715,15.0
+85.01955771739715,16.0
+88.7986650172108,16.0
+88.7986650172108,17.0
+93.23791115370193,17.0
+93.23791115370193,18.0
+96.54468672722275,18.0
+96.54468672722275,19.0
+99.93653907053566,19.0
+99.93653907053566,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff0b0b" encoding="csv">0.0,0.0
+5.375792325825856,0.0
+5.375792325825856,1.0
+39.94245773386336,1.0
+39.94245773386336,2.0
+47.09975650226356,2.0
+47.09975650226356,3.0
+51.491814469994694,3.0
+51.491814469994694,4.0
+58.09574600013158,4.0
+58.09574600013158,5.0
+62.36607522196888,5.0
+62.36607522196888,6.0
+66.42704060473964,6.0
+66.42704060473964,7.0
+74.38749169724687,7.0
+74.38749169724687,8.0
+79.35678524972288,8.0
+79.35678524972288,9.0
+84.5917823128611,9.0
+84.5917823128611,10.0
+89.74107446558747,10.0
+89.74107446558747,11.0
+98.96991757658255,11.0
+98.96991757658255,12.0
+100.0,12.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+6.67401479799611,0.0
+6.67401479799611,1.0
+14.748883543281593,1.0
+14.748883543281593,2.0
+23.52145132582982,2.0
+23.52145132582982,3.0
+27.35427674000732,3.0
+27.35427674000732,4.0
+33.22763465505595,4.0
+33.22763465505595,5.0
+36.47325424325607,5.0
+36.47325424325607,6.0
+44.59827221967638,6.0
+44.59827221967638,7.0
+47.973925149527396,7.0
+47.973925149527396,8.0
+51.29466355533308,8.0
+51.29466355533308,9.0
+55.86896852503597,9.0
+55.86896852503597,10.0
+59.465521445545015,10.0
+59.465521445545015,11.0
+65.05108270442767,11.0
+65.05108270442767,12.0
+72.40767834154539,12.0
+72.40767834154539,13.0
+76.3557249007881,13.0
+76.3557249007881,14.0
+82.7902284563289,14.0
+82.7902284563289,15.0
+88.77133100283501,15.0
+88.77133100283501,16.0
+92.48693950172257,16.0
+92.48693950172257,17.0
+96.15764184808522,17.0
+96.15764184808522,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+4.500062041286963,0.0
+4.500062041286963,1.0
+10.591882617698344,1.0
+10.591882617698344,2.0
+16.944266105175327,2.0
+16.944266105175327,3.0
+21.661303911329643,3.0
+21.661303911329643,4.0
+27.169753429554333,4.0
+27.169753429554333,5.0
+33.19460514445311,5.0
+33.19460514445311,6.0
+38.753220737206725,6.0
+38.753220737206725,7.0
+43.262595525612795,7.0
+43.262595525612795,8.0
+48.37233794393905,8.0
+48.37233794393905,9.0
+53.45949312408625,9.0
+53.45949312408625,10.0
+59.14524914409348,10.0
+59.14524914409348,11.0
+64.14602914637508,11.0
+64.14602914637508,12.0
+68.43120124938574,12.0
+68.43120124938574,13.0
+73.65442770891009,13.0
+73.65442770891009,14.0
+80.01345305280897,14.0
+80.01345305280897,15.0
+84.18383768182404,15.0
+84.18383768182404,16.0
+88.20198185724736,16.0
+88.20198185724736,17.0
+92.96810393410225,17.0
+92.96810393410225,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff0d0d" encoding="csv">0.0,0.0
+6.453625212511978,0.0
+6.453625212511978,1.0
+19.751014492620875,1.0
+19.751014492620875,2.0
+25.976599696761816,2.0
+25.976599696761816,3.0
+29.522395192029904,3.0
+29.522395192029904,4.0
+34.889599145083025,4.0
+34.889599145083025,5.0
+38.820775368543416,5.0
+38.820775368543416,6.0
+43.038876391232414,6.0
+43.038876391232414,7.0
+46.97740251048521,7.0
+46.97740251048521,8.0
+53.328550640458985,8.0
+53.328550640458985,9.0
+59.33651516632072,9.0
+59.33651516632072,10.0
+62.70871453035469,10.0
+62.70871453035469,11.0
+67.58378282643424,11.0
+67.58378282643424,12.0
+73.96898073577846,12.0
+73.96898073577846,13.0
+79.0267419293175,13.0
+79.0267419293175,14.0
+83.50108231420757,14.0
+83.50108231420757,15.0
+87.62532483384496,15.0
+87.62532483384496,16.0
+91.77645622473723,16.0
+91.77645622473723,17.0
+96.65846013527764,17.0
+96.65846013527764,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff0e0e" encoding="csv">0.0,0.0
+5.215860607106244,0.0
+5.215860607106244,1.0
+22.25393276556524,1.0
+22.25393276556524,2.0
+27.81728063816975,2.0
+27.81728063816975,3.0
+33.23878068603032,3.0
+33.23878068603032,4.0
+37.56214339259829,4.0
+37.56214339259829,5.0
+42.156387899387205,5.0
+42.156387899387205,6.0
+45.78263264167948,6.0
+45.78263264167948,7.0
+49.428430720965565,7.0
+49.428430720965565,8.0
+56.39431066179745,8.0
+56.39431066179745,9.0
+60.831878757546775,9.0
+60.831878757546775,10.0
+64.18266048323267,10.0
+64.18266048323267,11.0
+72.6339509734345,11.0
+72.6339509734345,12.0
+77.704926003384,12.0
+77.704926003384,13.0
+82.60252566499945,13.0
+82.60252566499945,14.0
+85.89182159640073,14.0
+85.89182159640073,15.0
+92.19497571032919,15.0
+92.19497571032919,16.0
+95.46549072718172,16.0
+95.46549072718172,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff0f0f" encoding="csv">0.0,0.0
+3.7415877915002493,0.0
+3.7415877915002493,1.0
+23.56256236985656,1.0
+23.56256236985656,2.0
+27.195899208334083,2.0
+27.195899208334083,3.0
+36.61453738910612,3.0
+36.61453738910612,4.0
+40.863849278014094,4.0
+40.863849278014094,5.0
+45.933917147153316,5.0
+45.933917147153316,6.0
+53.04998199910658,6.0
+53.04998199910658,7.0
+57.89809853567433,7.0
+57.89809853567433,8.0
+65.46758466485296,8.0
+65.46758466485296,9.0
+68.71443038116111,9.0
+68.71443038116111,10.0
+72.75084469301893,10.0
+72.75084469301893,11.0
+77.24143313106363,11.0
+77.24143313106363,12.0
+81.00934962822834,12.0
+81.00934962822834,13.0
+85.1743304678227,13.0
+85.1743304678227,14.0
+91.11273861332646,14.0
+91.11273861332646,15.0
+95.09733997458987,15.0
+95.09733997458987,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff1010" encoding="csv">0.0,0.0
+5.260627515584094,0.0
+5.260627515584094,1.0
+17.187714198425482,1.0
+17.187714198425482,2.0
+22.44844787310321,2.0
+22.44844787310321,3.0
+26.206045671761995,3.0
+26.206045671761995,4.0
+30.801305831307552,4.0
+30.801305831307552,5.0
+37.83489805086809,5.0
+37.83489805086809,6.0
+42.549207094745576,6.0
+42.549207094745576,7.0
+49.16129499736225,7.0
+49.16129499736225,8.0
+54.6566780999803,8.0
+54.6566780999803,9.0
+57.952260687172206,9.0
+57.952260687172206,10.0
+63.215210658498016,10.0
+63.215210658498016,11.0
+67.18020895367826,11.0
+67.18020895367826,12.0
+71.01014968991679,12.0
+71.01014968991679,13.0
+74.76122072872637,13.0
+74.76122072872637,14.0
+80.41677673245196,14.0
+80.41677673245196,15.0
+83.95301778985323,15.0
+83.95301778985323,16.0
+88.14413708083235,16.0
+88.14413708083235,17.0
+93.47504177644707,17.0
+93.47504177644707,18.0
+97.9188394438136,18.0
+97.9188394438136,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff1111" encoding="csv">0.0,0.0
+4.8339573441215515,0.0
+4.8339573441215515,1.0
+17.435254208002874,1.0
+17.435254208002874,2.0
+22.674243484190526,2.0
+22.674243484190526,3.0
+26.125704670458042,3.0
+26.125704670458042,4.0
+37.539228447846156,4.0
+37.539228447846156,5.0
+43.353351361773534,5.0
+43.353351361773534,6.0
+46.803974239212096,6.0
+46.803974239212096,7.0
+52.79461015319311,7.0
+52.79461015319311,8.0
+57.42811153322578,8.0
+57.42811153322578,9.0
+61.343212862978014,9.0
+61.343212862978014,10.0
+64.81441018721101,10.0
+64.81441018721101,11.0
+68.5201930275638,11.0
+68.5201930275638,12.0
+73.84528343356317,12.0
+73.84528343356317,13.0
+79.50847856847525,13.0
+79.50847856847525,14.0
+84.78411946027704,14.0
+84.78411946027704,15.0
+93.64836245725556,15.0
+93.64836245725556,16.0
+98.35572820086036,16.0
+98.35572820086036,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff1212" encoding="csv">0.0,0.0
+5.270968575253545,0.0
+5.270968575253545,1.0
+10.208801930111203,1.0
+10.208801930111203,2.0
+15.699866722462932,2.0
+15.699866722462932,3.0
+19.103738635999726,3.0
+19.103738635999726,4.0
+26.8169626723058,4.0
+26.8169626723058,5.0
+32.46042510612611,5.0
+32.46042510612611,6.0
+36.55308020190139,6.0
+36.55308020190139,7.0
+44.86468756394076,7.0
+44.86468756394076,8.0
+48.801935836324986,8.0
+48.801935836324986,9.0
+52.35162236813676,9.0
+52.35162236813676,10.0
+59.357706578485114,10.0
+59.357706578485114,11.0
+63.1246870520956,11.0
+63.1246870520956,12.0
+70.67591302709221,12.0
+70.67591302709221,13.0
+74.78931138045067,13.0
+74.78931138045067,14.0
+80.53138414473625,14.0
+80.53138414473625,15.0
+84.86442693371829,15.0
+84.86442693371829,16.0
+90.59511761432266,16.0
+90.59511761432266,17.0
+96.82207291988404,17.0
+96.82207291988404,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff1313" encoding="csv">0.0,0.0
+5.029578715367364,0.0
+5.029578715367364,1.0
+12.197411407996212,1.0
+12.197411407996212,2.0
+16.7589931321448,2.0
+16.7589931321448,3.0
+20.265862099703362,3.0
+20.265862099703362,4.0
+29.516578994245393,4.0
+29.516578994245393,5.0
+36.63744935574477,5.0
+36.63744935574477,6.0
+40.27618240565264,6.0
+40.27618240565264,7.0
+46.697868638658605,7.0
+46.697868638658605,8.0
+50.608183318004166,8.0
+50.608183318004166,9.0
+54.20600613889847,9.0
+54.20600613889847,10.0
+62.98474724646303,10.0
+62.98474724646303,11.0
+68.89432511344023,11.0
+68.89432511344023,12.0
+73.54951360528307,12.0
+73.54951360528307,13.0
+82.44900236771137,13.0
+82.44900236771137,14.0
+86.77240532539787,14.0
+86.77240532539787,15.0
+91.54361058012844,15.0
+91.54361058012844,16.0
+97.00336071024405,16.0
+97.00336071024405,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff1414" encoding="csv">0.0,0.0
+4.17557361320382,0.0
+4.17557361320382,1.0
+14.484702865247808,1.0
+14.484702865247808,2.0
+20.007308603100455,2.0
+20.007308603100455,3.0
+23.351586027265572,3.0
+23.351586027265572,4.0
+28.255482757552876,4.0
+28.255482757552876,5.0
+31.760734599432617,5.0
+31.760734599432617,6.0
+35.34649764932882,6.0
+35.34649764932882,7.0
+39.04177637707832,7.0
+39.04177637707832,8.0
+44.388914513197115,8.0
+44.388914513197115,9.0
+48.358293865653295,9.0
+48.358293865653295,10.0
+54.41848162201216,10.0
+54.41848162201216,11.0
+59.15785287244812,11.0
+59.15785287244812,12.0
+62.42610855852442,12.0
+62.42610855852442,13.0
+65.85602814033071,13.0
+65.85602814033071,14.0
+69.6661135446481,14.0
+69.6661135446481,15.0
+76.18295596282736,15.0
+76.18295596282736,16.0
+79.62968506416993,16.0
+79.62968506416993,17.0
+83.98445591314724,17.0
+83.98445591314724,18.0
+87.40379282371522,18.0
+87.40379282371522,19.0
+92.78666211671963,19.0
+92.78666211671963,20.0
+96.53817015470017,20.0
+96.53817015470017,21.0
+100.0,21.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+4.239245178334916,0.0
+4.239245178334916,1.0
+24.053091216022654,1.0
+24.053091216022654,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+4.433082312857456,0.0
+4.433082312857456,1.0
+15.587153239118084,1.0
+15.587153239118084,2.0
+22.86537797008222,2.0
+22.86537797008222,3.0
+30.44369597517074,3.0
+30.44369597517074,4.0
+33.92014829641505,4.0
+33.92014829641505,5.0
+39.67491824444229,5.0
+39.67491824444229,6.0
+44.513537364509965,6.0
+44.513537364509965,7.0
+50.273538470839746,7.0
+50.273538470839746,8.0
+54.73993844204877,8.0
+54.73993844204877,9.0
+58.02946056706276,9.0
+58.02946056706276,10.0
+63.98840365035295,10.0
+63.98840365035295,11.0
+70.74523070390859,11.0
+70.74523070390859,12.0
+74.58997228111464,12.0
+74.58997228111464,13.0
+84.81424477699956,13.0
+84.81424477699956,14.0
+89.20571932373772,14.0
+89.20571932373772,15.0
+96.12549187986322,15.0
+96.12549187986322,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff1616" encoding="csv">0.0,0.0
+4.003609729651753,0.0
+4.003609729651753,1.0
+8.966924133687105,1.0
+8.966924133687105,2.0
+24.918363190574137,2.0
+24.918363190574137,3.0
+34.59691386738615,3.0
+34.59691386738615,4.0
+38.85567224907153,4.0
+38.85567224907153,5.0
+44.07469813633517,5.0
+44.07469813633517,6.0
+47.691353747773086,6.0
+47.691353747773086,7.0
+51.240827289758414,7.0
+51.240827289758414,8.0
+55.843933913439606,8.0
+55.843933913439606,9.0
+62.92876892299226,9.0
+62.92876892299226,10.0
+66.8340997088236,10.0
+66.8340997088236,11.0
+70.71925785162055,11.0
+70.71925785162055,12.0
+74.95706928081665,12.0
+74.95706928081665,13.0
+79.41067674987457,13.0
+79.41067674987457,14.0
+84.51552264667515,14.0
+84.51552264667515,15.0
+90.28213385019644,15.0
+90.28213385019644,16.0
+96.11537325680206,16.0
+96.11537325680206,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff1717" encoding="csv">0.0,0.0
+6.591422620933093,0.0
+6.591422620933093,1.0
+41.29990225901938,1.0
+41.29990225901938,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1818" encoding="csv">0.0,0.0
+7.433636535446505,0.0
+7.433636535446505,1.0
+29.361379892546715,1.0
+29.361379892546715,2.0
+46.92841942562411,2.0
+46.92841942562411,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff1919" encoding="csv">0.0,0.0
+4.92052274725354,0.0
+4.92052274725354,1.0
+14.334570758452905,1.0
+14.334570758452905,2.0
+18.162362360630706,2.0
+18.162362360630706,3.0
+22.021284010458082,3.0
+22.021284010458082,4.0
+27.50293332613331,4.0
+27.50293332613331,5.0
+33.537721679284004,5.0
+33.537721679284004,6.0
+38.28891797130419,6.0
+38.28891797130419,7.0
+43.09887866117204,7.0
+43.09887866117204,8.0
+46.78155725372125,8.0
+46.78155725372125,9.0
+50.41437472536909,9.0
+50.41437472536909,10.0
+56.44898997501902,10.0
+56.44898997501902,11.0
+60.94604211562981,11.0
+60.94604211562981,12.0
+65.8922613643379,12.0
+65.8922613643379,13.0
+70.4237625552847,13.0
+70.4237625552847,14.0
+74.2700025375914,14.0
+74.2700025375914,15.0
+77.62376057720827,15.0
+77.62376057720827,16.0
+83.58751685733868,16.0
+83.58751685733868,17.0
+86.66098325640723,17.0
+86.66098325640723,18.0
+91.04321405508543,18.0
+91.04321405508543,19.0
+95.5882834473405,19.0
+95.5882834473405,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff1a1a" encoding="csv">0.0,0.0
+3.3945373796165326,0.0
+3.3945373796165326,1.0
+8.605240399302152,1.0
+8.605240399302152,2.0
+13.335217295970796,2.0
+13.335217295970796,3.0
+17.086250343560238,3.0
+17.086250343560238,4.0
+21.085162084849976,4.0
+21.085162084849976,5.0
+25.825969538443506,5.0
+25.825969538443506,6.0
+30.46541400261488,6.0
+30.46541400261488,7.0
+35.09492560351306,7.0
+35.09492560351306,8.0
+38.9147865206832,8.0
+38.9147865206832,9.0
+42.507635412066726,9.0
+42.507635412066726,10.0
+46.99012643068718,10.0
+46.99012643068718,11.0
+50.772418604836936,11.0
+50.772418604836936,12.0
+54.375858334524935,12.0
+54.375858334524935,13.0
+57.794383953403184,13.0
+57.794383953403184,14.0
+62.83962404752792,14.0
+62.83962404752792,15.0
+68.89122766590556,15.0
+68.89122766590556,16.0
+73.36213122039466,16.0
+73.36213122039466,17.0
+79.10727871882585,17.0
+79.10727871882585,18.0
+84.18517300952942,18.0
+84.18517300952942,19.0
+89.99714466258261,19.0
+89.99714466258261,20.0
+94.61671476736767,20.0
+94.61671476736767,21.0
+97.98836379468958,21.0
+97.98836379468958,22.0
+100.0,22.0
+					</series>
+					<series title="" type="l" color="0xff1b1b" encoding="csv">0.0,0.0
+6.722984289909787,0.0
+6.722984289909787,1.0
+11.923984779748134,1.0
+11.923984779748134,2.0
+17.246392013786167,2.0
+17.246392013786167,3.0
+23.495887683586787,3.0
+23.495887683586787,4.0
+28.134409888031023,4.0
+28.134409888031023,5.0
+32.65013854220085,5.0
+32.65013854220085,6.0
+38.61571090772765,6.0
+38.61571090772765,7.0
+43.01429030742138,7.0
+43.01429030742138,8.0
+49.40639464411283,8.0
+49.40639464411283,9.0
+53.16801727175312,9.0
+53.16801727175312,10.0
+57.0458205288937,10.0
+57.0458205288937,11.0
+61.343444438223806,11.0
+61.343444438223806,12.0
+69.74199588491167,12.0
+69.74199588491167,13.0
+75.38276115097794,13.0
+75.38276115097794,14.0
+79.45573849681466,14.0
+79.45573849681466,15.0
+84.53803968370485,15.0
+84.53803968370485,16.0
+88.73470965796358,16.0
+88.73470965796358,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff1c1c" encoding="csv">0.0,0.0
+6.041194331678106,0.0
+6.041194331678106,1.0
+26.643015773412763,1.0
+26.643015773412763,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+4.740226368970713,0.0
+4.740226368970713,1.0
+13.03725953109572,1.0
+13.03725953109572,2.0
+31.689394422141284,2.0
+31.689394422141284,3.0
+39.58033755809355,3.0
+39.58033755809355,4.0
+43.11292785762372,4.0
+43.11292785762372,5.0
+47.49852564761429,5.0
+47.49852564761429,6.0
+52.18133073372452,6.0
+52.18133073372452,7.0
+57.39846765808996,7.0
+57.39846765808996,8.0
+62.87120253062226,8.0
+62.87120253062226,9.0
+66.59782385869151,9.0
+66.59782385869151,10.0
+74.78893986636723,10.0
+74.78893986636723,11.0
+78.92630267146757,11.0
+78.92630267146757,12.0
+84.0138449047308,12.0
+84.0138449047308,13.0
+91.01406143849198,13.0
+91.01406143849198,14.0
+95.54487426803493,14.0
+95.54487426803493,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+3.518947174464793,0.0
+3.518947174464793,1.0
+33.55677665090085,1.0
+33.55677665090085,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1e1e" encoding="csv">0.0,0.0
+3.083800681766486,0.0
+3.083800681766486,1.0
+9.35531321652783,1.0
+9.35531321652783,2.0
+19.90163524709087,2.0
+19.90163524709087,3.0
+25.1114635846272,3.0
+25.1114635846272,4.0
+28.571095981748922,4.0
+28.571095981748922,5.0
+33.21704799531162,5.0
+33.21704799531162,6.0
+37.84244621154367,6.0
+37.84244621154367,7.0
+41.717409715337574,7.0
+41.717409715337574,8.0
+46.04771785916312,8.0
+46.04771785916312,9.0
+49.98644486074611,9.0
+49.98644486074611,10.0
+56.105853008330314,10.0
+56.105853008330314,11.0
+59.75504776969325,11.0
+59.75504776969325,12.0
+65.38346142789676,12.0
+65.38346142789676,13.0
+69.43934174516268,13.0
+69.43934174516268,14.0
+75.77465142865603,14.0
+75.77465142865603,15.0
+80.13084875848689,15.0
+80.13084875848689,16.0
+85.68998403876188,16.0
+85.68998403876188,17.0
+89.85238401785861,17.0
+89.85238401785861,18.0
+94.61934972788217,18.0
+94.61934972788217,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff1f1f" encoding="csv">0.0,0.0
+6.2454156254574436,0.0
+6.2454156254574436,1.0
+17.44846692255509,1.0
+17.44846692255509,2.0
+25.435679961805953,2.0
+25.435679961805953,3.0
+42.11577528526185,3.0
+42.11577528526185,4.0
+47.135047450170966,4.0
+47.135047450170966,5.0
+50.75787695793589,5.0
+50.75787695793589,6.0
+56.89431306419235,6.0
+56.89431306419235,7.0
+61.292857433039686,7.0
+61.292857433039686,8.0
+66.34310686187777,8.0
+66.34310686187777,9.0
+71.1576628007377,9.0
+71.1576628007377,10.0
+76.52404756129481,10.0
+76.52404756129481,11.0
+79.66809662639407,11.0
+79.66809662639407,12.0
+83.34820989235918,12.0
+83.34820989235918,13.0
+87.62172081341542,13.0
+87.62172081341542,14.0
+90.98934656867812,14.0
+90.98934656867812,15.0
+95.6936528874254,15.0
+95.6936528874254,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff2020" encoding="csv">0.0,0.0
+7.703530838179681,0.0
+7.703530838179681,1.0
+14.92734882320586,1.0
+14.92734882320586,2.0
+19.55434502083357,2.0
+19.55434502083357,3.0
+23.400428623989175,3.0
+23.400428623989175,4.0
+27.2886021115916,4.0
+27.2886021115916,5.0
+31.751578691670666,5.0
+31.751578691670666,6.0
+40.07269595565846,6.0
+40.07269595565846,7.0
+45.74295446814973,7.0
+45.74295446814973,8.0
+49.02729884211563,8.0
+49.02729884211563,9.0
+55.79773820890612,9.0
+55.79773820890612,10.0
+64.08656287305197,10.0
+64.08656287305197,11.0
+70.14662116551455,11.0
+70.14662116551455,12.0
+75.13150966254187,12.0
+75.13150966254187,13.0
+80.2731174353849,13.0
+80.2731174353849,14.0
+83.7916880637557,14.0
+83.7916880637557,15.0
+89.85769158105968,15.0
+89.85769158105968,16.0
+97.05260396374155,16.0
+97.05260396374155,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff2121" encoding="csv">0.0,0.0
+3.5926190304787795,0.0
+3.5926190304787795,1.0
+19.606168627866495,1.0
+19.606168627866495,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2222" encoding="csv">0.0,0.0
+3.4587453535577923,0.0
+3.4587453535577923,1.0
+23.981456537530367,1.0
+23.981456537530367,2.0
+29.994159916836058,2.0
+29.994159916836058,3.0
+34.102304248706645,3.0
+34.102304248706645,4.0
+37.48109905709769,4.0
+37.48109905709769,5.0
+43.830795034492155,5.0
+43.830795034492155,6.0
+49.72778316137779,6.0
+49.72778316137779,7.0
+58.596038160793405,7.0
+58.596038160793405,8.0
+62.87319249039346,8.0
+62.87319249039346,9.0
+67.82951985946775,9.0
+67.82951985946775,10.0
+78.03962939220986,10.0
+78.03962939220986,11.0
+83.97487362217433,11.0
+83.97487362217433,12.0
+87.36370305629677,12.0
+87.36370305629677,13.0
+92.26650196984373,13.0
+92.26650196984373,14.0
+97.65339532524987,14.0
+97.65339532524987,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff2323" encoding="csv">0.0,0.0
+4.333377113558903,0.0
+4.333377113558903,1.0
+24.188980581128195,1.0
+24.188980581128195,2.0
+30.65902516248761,2.0
+30.65902516248761,3.0
+37.308254766424554,3.0
+37.308254766424554,4.0
+44.41482414308274,4.0
+44.41482414308274,5.0
+53.58690046052174,5.0
+53.58690046052174,6.0
+57.82167412334554,6.0
+57.82167412334554,7.0
+62.9844681407496,7.0
+62.9844681407496,8.0
+69.36949629399862,8.0
+69.36949629399862,9.0
+74.64136618844748,9.0
+74.64136618844748,10.0
+79.48891520835144,10.0
+79.48891520835144,11.0
+83.34055228146144,11.0
+83.34055228146144,12.0
+87.83032251849681,12.0
+87.83032251849681,13.0
+91.82377148618139,13.0
+91.82377148618139,14.0
+96.61794304962169,14.0
+96.61794304962169,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff2424" encoding="csv">0.0,0.0
+5.825231347007752,0.0
+5.825231347007752,1.0
+11.372304035556425,1.0
+11.372304035556425,2.0
+26.22247729360978,2.0
+26.22247729360978,3.0
+34.771808603304656,3.0
+34.771808603304656,4.0
+40.89713610999198,4.0
+40.89713610999198,5.0
+47.78108199622253,5.0
+47.78108199622253,6.0
+55.906037678382,6.0
+55.906037678382,7.0
+63.85569590124403,7.0
+63.85569590124403,8.0
+67.13225617309351,8.0
+67.13225617309351,9.0
+72.92056312261876,9.0
+72.92056312261876,10.0
+77.15898000317544,10.0
+77.15898000317544,11.0
+81.52853183027716,11.0
+81.52853183027716,12.0
+86.91908141546932,12.0
+86.91908141546932,13.0
+90.67976406994953,13.0
+90.67976406994953,14.0
+96.62378213016284,14.0
+96.62378213016284,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+3.1464902599162228,0.0
+3.1464902599162228,1.0
+14.98752464669601,1.0
+14.98752464669601,2.0
+19.442028749036744,2.0
+19.442028749036744,3.0
+32.846498793632975,3.0
+32.846498793632975,4.0
+41.09411302573081,4.0
+41.09411302573081,5.0
+45.616128684338534,5.0
+45.616128684338534,6.0
+48.838279659959234,6.0
+48.838279659959234,7.0
+53.599112462737594,7.0
+53.599112462737594,8.0
+57.30765156134559,8.0
+57.30765156134559,9.0
+62.509233361424315,9.0
+62.509233361424315,10.0
+69.91442093559986,10.0
+69.91442093559986,11.0
+74.13245931900418,11.0
+74.13245931900418,12.0
+79.05134491291295,12.0
+79.05134491291295,13.0
+83.33308261969026,13.0
+83.33308261969026,14.0
+86.6491926855027,14.0
+86.6491926855027,15.0
+91.22392215269993,15.0
+91.22392215269993,16.0
+96.12646152995212,16.0
+96.12646152995212,17.0
+99.90084479564266,17.0
+99.90084479564266,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+8.947023790988695,0.0
+8.947023790988695,1.0
+13.088078765898384,1.0
+13.088078765898384,2.0
+20.26155504881201,2.0
+20.26155504881201,3.0
+25.421870615411407,3.0
+25.421870615411407,4.0
+30.77365016046683,4.0
+30.77365016046683,5.0
+34.16914942150641,5.0
+34.16914942150641,6.0
+38.834299869136245,6.0
+38.834299869136245,7.0
+46.26907976781219,7.0
+46.26907976781219,8.0
+49.99362111672003,8.0
+49.99362111672003,9.0
+54.813804493236134,9.0
+54.813804493236134,10.0
+59.13833454094515,10.0
+59.13833454094515,11.0
+63.14751764427291,11.0
+63.14751764427291,12.0
+69.3564010286908,12.0
+69.3564010286908,13.0
+73.51273486513686,13.0
+73.51273486513686,14.0
+80.48127059337672,14.0
+80.48127059337672,15.0
+85.44705042408887,15.0
+85.44705042408887,16.0
+89.9290620791999,16.0
+89.9290620791999,17.0
+93.2183672271429,17.0
+93.2183672271429,18.0
+99.07159961377567,18.0
+99.07159961377567,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff2626" encoding="csv">0.0,0.0
+4.451841431000577,0.0
+4.451841431000577,1.0
+11.109636185240472,1.0
+11.109636185240472,2.0
+15.131515503413596,2.0
+15.131515503413596,3.0
+19.241611041777674,3.0
+19.241611041777674,4.0
+22.57624996267994,4.0
+22.57624996267994,5.0
+27.76135921677192,5.0
+27.76135921677192,6.0
+31.813688910715594,6.0
+31.813688910715594,7.0
+37.47834630930763,7.0
+37.47834630930763,8.0
+41.27647639410446,8.0
+41.27647639410446,9.0
+44.42838739134784,9.0
+44.42838739134784,10.0
+52.97484831376933,10.0
+52.97484831376933,11.0
+57.11738447380735,11.0
+57.11738447380735,12.0
+60.70000154951562,12.0
+60.70000154951562,13.0
+65.23426107542001,13.0
+65.23426107542001,14.0
+70.02867878431117,14.0
+70.02867878431117,15.0
+74.96907048146352,15.0
+74.96907048146352,16.0
+81.70466750453606,16.0
+81.70466750453606,17.0
+87.48279040861564,17.0
+87.48279040861564,18.0
+92.33026563755139,18.0
+92.33026563755139,19.0
+97.35824550935413,19.0
+97.35824550935413,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff2727" encoding="csv">0.0,0.0
+4.923130554294342,0.0
+4.923130554294342,1.0
+15.281329871703567,1.0
+15.281329871703567,2.0
+27.045589867378148,2.0
+27.045589867378148,3.0
+45.86516897233938,3.0
+45.86516897233938,4.0
+52.446783819199275,4.0
+52.446783819199275,5.0
+72.13225976310123,5.0
+72.13225976310123,6.0
+78.08164231448175,6.0
+78.08164231448175,7.0
+84.36694844556057,7.0
+84.36694844556057,8.0
+88.59803593511296,8.0
+88.59803593511296,9.0
+91.99976529024254,9.0
+91.99976529024254,10.0
+95.81120167541971,10.0
+95.81120167541971,11.0
+99.70348050974766,11.0
+99.70348050974766,12.0
+100.0,12.0
+					</series>
+					<series title="" type="l" color="0xff2828" encoding="csv">0.0,0.0
+4.922124568713791,0.0
+4.922124568713791,1.0
+15.226167609808783,1.0
+15.226167609808783,2.0
+31.454633135630438,2.0
+31.454633135630438,3.0
+35.44636087566101,3.0
+35.44636087566101,4.0
+39.47099009916319,4.0
+39.47099009916319,5.0
+45.438380244997475,5.0
+45.438380244997475,6.0
+49.220717606338845,6.0
+49.220717606338845,7.0
+53.517552249722584,7.0
+53.517552249722584,8.0
+56.645263095031716,8.0
+56.645263095031716,9.0
+60.822182118260436,9.0
+60.822182118260436,10.0
+64.96244293404428,10.0
+64.96244293404428,11.0
+69.53235476429997,11.0
+69.53235476429997,12.0
+74.24267302497083,12.0
+74.24267302497083,13.0
+77.79953975020695,13.0
+77.79953975020695,14.0
+82.0513135409477,14.0
+82.0513135409477,15.0
+85.93037381317558,15.0
+85.93037381317558,16.0
+90.14895777986415,16.0
+90.14895777986415,17.0
+94.91189608086084,17.0
+94.91189608086084,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff2929" encoding="csv">0.0,0.0
+6.630582511585619,0.0
+6.630582511585619,1.0
+12.54169591201648,1.0
+12.54169591201648,2.0
+17.325561786564535,2.0
+17.325561786564535,3.0
+22.788828037948424,3.0
+22.788828037948424,4.0
+26.838627773876404,4.0
+26.838627773876404,5.0
+35.467908528438215,5.0
+35.467908528438215,6.0
+39.98628928143236,6.0
+39.98628928143236,7.0
+47.82835441142264,7.0
+47.82835441142264,8.0
+51.47397246519172,8.0
+51.47397246519172,9.0
+54.844012441910394,9.0
+54.844012441910394,10.0
+59.533211556966066,10.0
+59.533211556966066,11.0
+63.022923811817286,11.0
+63.022923811817286,12.0
+67.27215483975073,12.0
+67.27215483975073,13.0
+73.35067106310701,13.0
+73.35067106310701,14.0
+77.58673714009294,14.0
+77.58673714009294,15.0
+83.72618986177277,15.0
+83.72618986177277,16.0
+92.88688224071086,16.0
+92.88688224071086,17.0
+97.02467144721373,17.0
+97.02467144721373,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff2a2a" encoding="csv">0.0,0.0
+3.4629440726148264,0.0
+3.4629440726148264,1.0
+13.231366648026164,1.0
+13.231366648026164,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2b2b" encoding="csv">0.0,0.0
+5.219725955000813,0.0
+5.219725955000813,1.0
+29.076566756818316,1.0
+29.076566756818316,2.0
+36.97695755159373,2.0
+36.97695755159373,3.0
+43.047538548587056,3.0
+43.047538548587056,4.0
+46.78939266467872,4.0
+46.78939266467872,5.0
+56.298043302666635,5.0
+56.298043302666635,6.0
+61.20869006909476,6.0
+61.20869006909476,7.0
+70.03886827031538,7.0
+70.03886827031538,8.0
+74.66949545799818,8.0
+74.66949545799818,9.0
+78.55434349445835,9.0
+78.55434349445835,10.0
+83.07745352837104,10.0
+83.07745352837104,11.0
+93.18580774591695,11.0
+93.18580774591695,12.0
+100.0,12.0
+					</series>
+					<series title="" type="l" color="0xff2c2c" encoding="csv">0.0,0.0
+4.6227450903146385,0.0
+4.6227450903146385,1.0
+13.18744846710958,1.0
+13.18744846710958,2.0
+17.925572451432824,2.0
+17.925572451432824,3.0
+21.536243559947255,3.0
+21.536243559947255,4.0
+25.3428287003598,4.0
+25.3428287003598,5.0
+29.914924063264884,5.0
+29.914924063264884,6.0
+35.47632177825205,6.0
+35.47632177825205,7.0
+39.66577877328234,7.0
+39.66577877328234,8.0
+44.30496036189361,8.0
+44.30496036189361,9.0
+48.98062444293665,9.0
+48.98062444293665,10.0
+52.41107339776893,10.0
+52.41107339776893,11.0
+55.70706588557357,11.0
+55.70706588557357,12.0
+61.699083885297064,12.0
+61.699083885297064,13.0
+65.14333962893994,13.0
+65.14333962893994,14.0
+68.64661125155229,14.0
+68.64661125155229,15.0
+72.88074520910962,15.0
+72.88074520910962,16.0
+77.17656349102853,16.0
+77.17656349102853,17.0
+82.05028644573662,17.0
+82.05028644573662,18.0
+86.68597595148053,18.0
+86.68597595148053,19.0
+94.9772553375486,19.0
+94.9772553375486,20.0
+99.28690938557725,20.0
+99.28690938557725,21.0
+100.0,21.0
+					</series>
+					<series title="" type="l" color="0xff2d2d" encoding="csv">0.0,0.0
+5.929748269598064,0.0
+5.929748269598064,1.0
+9.743744393665724,1.0
+9.743744393665724,2.0
+15.675149893575382,2.0
+15.675149893575382,3.0
+19.049267905012286,3.0
+19.049267905012286,4.0
+26.66558906221455,4.0
+26.66558906221455,5.0
+30.309057581180895,5.0
+30.309057581180895,6.0
+34.74361221378375,6.0
+34.74361221378375,7.0
+38.93023650025443,7.0
+38.93023650025443,8.0
+42.44484855406494,8.0
+42.44484855406494,9.0
+48.564473604478835,9.0
+48.564473604478835,10.0
+52.404396411528495,10.0
+52.404396411528495,11.0
+62.871698377294564,11.0
+62.871698377294564,12.0
+69.28561886018453,12.0
+69.28561886018453,13.0
+75.5747362301224,13.0
+75.5747362301224,14.0
+80.66228082382422,14.0
+80.66228082382422,15.0
+84.82189194847349,15.0
+84.82189194847349,16.0
+89.58793577070097,16.0
+89.58793577070097,17.0
+96.65204266259806,17.0
+96.65204266259806,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+5.7814804859556865,0.0
+5.7814804859556865,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+4.722219222930325,0.0
+4.722219222930325,1.0
+20.18789938175617,1.0
+20.18789938175617,2.0
+25.039007637992505,2.0
+25.039007637992505,3.0
+33.302820081168015,3.0
+33.302820081168015,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff2f2f" encoding="csv">0.0,0.0
+4.258251314596787,0.0
+4.258251314596787,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3030" encoding="csv">0.0,0.0
+4.534884245676298,0.0
+4.534884245676298,1.0
+11.829960781792966,1.0
+11.829960781792966,2.0
+16.3532514032715,2.0
+16.3532514032715,3.0
+21.199170381843494,3.0
+21.199170381843494,4.0
+38.1716419171883,4.0
+38.1716419171883,5.0
+58.90998927502304,5.0
+58.90998927502304,6.0
+100.0,6.0
+					</series>
+					<series title="" type="l" color="0xff3131" encoding="csv">0.0,0.0
+3.2034168596704857,0.0
+3.2034168596704857,1.0
+7.854161984769268,1.0
+7.854161984769268,2.0
+14.918167118666245,2.0
+14.918167118666245,3.0
+20.131837784964777,3.0
+20.131837784964777,4.0
+25.497282263361736,4.0
+25.497282263361736,5.0
+100.0,5.0
+					</series>
+					<series title="" type="l" color="0xff3232" encoding="csv">0.0,0.0
+4.039237392473098,0.0
+4.039237392473098,1.0
+9.94375779304545,1.0
+9.94375779304545,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3333" encoding="csv">0.0,0.0
+4.5579138062774796,0.0
+4.5579138062774796,1.0
+17.862817938765314,1.0
+17.862817938765314,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3434" encoding="csv">0.0,0.0
+3.82584108192849,0.0
+3.82584108192849,1.0
+12.58771889016252,1.0
+12.58771889016252,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3535" encoding="csv">0.0,0.0
+4.3472718833850665,0.0
+4.3472718833850665,1.0
+24.53871101941236,1.0
+24.53871101941236,2.0
+28.746867028600263,2.0
+28.746867028600263,3.0
+36.68769233087304,3.0
+36.68769233087304,4.0
+43.74406932421307,4.0
+43.74406932421307,5.0
+47.96179162280945,5.0
+47.96179162280945,6.0
+53.93390002793592,6.0
+53.93390002793592,7.0
+58.40747735118535,7.0
+58.40747735118535,8.0
+64.36977294362401,8.0
+64.36977294362401,9.0
+72.23628829497567,9.0
+72.23628829497567,10.0
+76.92442334577392,10.0
+76.92442334577392,11.0
+81.23849120599677,11.0
+81.23849120599677,12.0
+84.81228892297891,12.0
+84.81228892297891,13.0
+94.07176408054481,13.0
+94.07176408054481,14.0
+98.15215232509469,14.0
+98.15215232509469,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+7.2582480326409655,0.0
+7.2582480326409655,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+3.9270500419912464,0.0
+3.9270500419912464,1.0
+12.83367479315893,1.0
+12.83367479315893,2.0
+17.277661609933297,2.0
+17.277661609933297,3.0
+22.867442244705064,3.0
+22.867442244705064,4.0
+26.725736958587007,4.0
+26.725736958587007,5.0
+31.958806728174054,5.0
+31.958806728174054,6.0
+36.167614005190295,6.0
+36.167614005190295,7.0
+40.54718335073997,7.0
+40.54718335073997,8.0
+47.83305194097138,8.0
+47.83305194097138,9.0
+51.80909076209707,9.0
+51.80909076209707,10.0
+56.02563575599744,10.0
+56.02563575599744,11.0
+61.09261829907643,11.0
+61.09261829907643,12.0
+65.20607017618272,12.0
+65.20607017618272,13.0
+69.66389475827947,13.0
+69.66389475827947,14.0
+73.8574100104188,14.0
+73.8574100104188,15.0
+78.07467375636256,15.0
+78.07467375636256,16.0
+83.29657820766951,16.0
+83.29657820766951,17.0
+86.41796420799207,17.0
+86.41796420799207,18.0
+91.2392151496513,18.0
+91.2392151496513,19.0
+97.60488166470464,19.0
+97.60488166470464,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff3737" encoding="csv">0.0,0.0
+7.0945757487226135,0.0
+7.0945757487226135,1.0
+12.257189619739144,1.0
+12.257189619739144,2.0
+21.497742765047995,2.0
+21.497742765047995,3.0
+28.467488345073953,3.0
+28.467488345073953,4.0
+34.589833057168775,4.0
+34.589833057168775,5.0
+39.26790844128294,5.0
+39.26790844128294,6.0
+43.99112500687892,6.0
+43.99112500687892,7.0
+48.02080079964996,7.0
+48.02080079964996,8.0
+56.006587186130474,8.0
+56.006587186130474,9.0
+59.792142320676085,9.0
+59.792142320676085,10.0
+64.02569478108325,10.0
+64.02569478108325,11.0
+68.4434359796033,11.0
+68.4434359796033,12.0
+72.66422350646037,12.0
+72.66422350646037,13.0
+77.7203218697164,13.0
+77.7203218697164,14.0
+84.11899582907179,14.0
+84.11899582907179,15.0
+92.3495225597138,15.0
+92.3495225597138,16.0
+98.4354115562724,16.0
+98.4354115562724,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff3838" encoding="csv">0.0,0.0
+4.892229333047689,0.0
+4.892229333047689,1.0
+29.026604416738643,1.0
+29.026604416738643,2.0
+38.97246034427788,2.0
+38.97246034427788,3.0
+46.76177755446668,3.0
+46.76177755446668,4.0
+53.78403698474711,4.0
+53.78403698474711,5.0
+56.906442600419545,5.0
+56.906442600419545,6.0
+61.371768518098236,6.0
+61.371768518098236,7.0
+65.66438508812351,7.0
+65.66438508812351,8.0
+70.63930164476697,8.0
+70.63930164476697,9.0
+74.8354539318311,9.0
+74.8354539318311,10.0
+80.44299514204066,10.0
+80.44299514204066,11.0
+85.20014503694863,11.0
+85.20014503694863,12.0
+89.55162835320498,12.0
+89.55162835320498,13.0
+93.82439297183227,13.0
+93.82439297183227,14.0
+100.0,14.0
+					</series>
+					<series title="" type="l" color="0xff3939" encoding="csv">0.0,0.0
+5.718652483806751,0.0
+5.718652483806751,1.0
+29.25812372657482,1.0
+29.25812372657482,2.0
+36.17193191850498,2.0
+36.17193191850498,3.0
+39.98432316269893,3.0
+39.98432316269893,4.0
+43.75450359061176,4.0
+43.75450359061176,5.0
+47.79354254698875,5.0
+47.79354254698875,6.0
+52.72436853627095,6.0
+52.72436853627095,7.0
+56.757970951880445,7.0
+56.757970951880445,8.0
+62.18821864559491,8.0
+62.18821864559491,9.0
+66.73960820899802,9.0
+66.73960820899802,10.0
+73.64585320655354,10.0
+73.64585320655354,11.0
+77.58344152661974,11.0
+77.58344152661974,12.0
+82.08255434484289,12.0
+82.08255434484289,13.0
+85.93806660762401,13.0
+85.93806660762401,14.0
+90.00694039798371,14.0
+90.00694039798371,15.0
+95.17719434986874,15.0
+95.17719434986874,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff3a3a" encoding="csv">0.0,0.0
+6.431259540113323,0.0
+6.431259540113323,1.0
+18.24574391032395,1.0
+18.24574391032395,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3b3b" encoding="csv">0.0,0.0
+4.365116747599284,0.0
+4.365116747599284,1.0
+13.995754340943716,1.0
+13.995754340943716,2.0
+18.261734634896506,2.0
+18.261734634896506,3.0
+22.30972479226576,3.0
+22.30972479226576,4.0
+28.546489806449543,4.0
+28.546489806449543,5.0
+33.2778214264734,5.0
+33.2778214264734,6.0
+40.07205281975386,6.0
+40.07205281975386,7.0
+44.92125508706891,7.0
+44.92125508706891,8.0
+48.65460821141926,8.0
+48.65460821141926,9.0
+53.4469561647187,9.0
+53.4469561647187,10.0
+57.59869254712396,10.0
+57.59869254712396,11.0
+62.99424011185347,11.0
+62.99424011185347,12.0
+69.04953704684867,12.0
+69.04953704684867,13.0
+72.19186663235223,13.0
+72.19186663235223,14.0
+78.21643888133703,14.0
+78.21643888133703,15.0
+81.89089535360844,15.0
+81.89089535360844,16.0
+86.08718382744973,16.0
+86.08718382744973,17.0
+92.21961516434786,17.0
+92.21961516434786,18.0
+96.82546071137119,18.0
+96.82546071137119,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff3c3c" encoding="csv">0.0,0.0
+6.9101594868678315,0.0
+6.9101594868678315,1.0
+13.791317829387724,1.0
+13.791317829387724,2.0
+20.879426335053253,2.0
+20.879426335053253,3.0
+24.763128475909397,3.0
+24.763128475909397,4.0
+31.95157742567763,4.0
+31.95157742567763,5.0
+39.44339206467524,5.0
+39.44339206467524,6.0
+45.919362771871796,6.0
+45.919362771871796,7.0
+49.93962760608208,7.0
+49.93962760608208,8.0
+55.247587531622685,8.0
+55.247587531622685,9.0
+59.80507031227862,9.0
+59.80507031227862,10.0
+63.75873181009494,10.0
+63.75873181009494,11.0
+67.07873438293193,11.0
+67.07873438293193,12.0
+71.88451956117082,12.0
+71.88451956117082,13.0
+78.57517226949967,13.0
+78.57517226949967,14.0
+83.61516749388795,14.0
+83.61516749388795,15.0
+88.47745295622815,15.0
+88.47745295622815,16.0
+92.5265733515142,16.0
+92.5265733515142,17.0
+96.44072484047174,17.0
+96.44072484047174,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff3d3d" encoding="csv">0.0,0.0
+4.842260053852296,0.0
+4.842260053852296,1.0
+19.90357466170233,1.0
+19.90357466170233,2.0
+38.314553147724695,2.0
+38.314553147724695,3.0
+42.03525112713305,3.0
+42.03525112713305,4.0
+45.263085640262474,4.0
+45.263085640262474,5.0
+52.92818653381707,5.0
+52.92818653381707,6.0
+58.2915974603991,6.0
+58.2915974603991,7.0
+64.44728778909968,7.0
+64.44728778909968,8.0
+68.72844557772135,8.0
+68.72844557772135,9.0
+73.44842936903018,9.0
+73.44842936903018,10.0
+77.27652339026969,10.0
+77.27652339026969,11.0
+82.90403932215803,11.0
+82.90403932215803,12.0
+88.77451141528987,12.0
+88.77451141528987,13.0
+93.12658857020088,13.0
+93.12658857020088,14.0
+100.0,14.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+4.997091082983463,0.0
+4.997091082983463,1.0
+14.351466714434249,1.0
+14.351466714434249,2.0
+18.781124279615685,2.0
+18.781124279615685,3.0
+22.183496287067452,3.0
+22.183496287067452,4.0
+26.17904852057205,4.0
+26.17904852057205,5.0
+30.768147970423243,5.0
+30.768147970423243,6.0
+36.08989546953297,6.0
+36.08989546953297,7.0
+42.215480012752195,7.0
+42.215480012752195,8.0
+45.839671184679645,8.0
+45.839671184679645,9.0
+49.0903181186571,9.0
+49.0903181186571,10.0
+58.64103174848863,10.0
+58.64103174848863,11.0
+63.65139202597814,11.0
+63.65139202597814,12.0
+70.22587178582125,12.0
+70.22587178582125,13.0
+73.34072136068644,13.0
+73.34072136068644,14.0
+77.11982121683985,14.0
+77.11982121683985,15.0
+81.01568995637139,15.0
+81.01568995637139,16.0
+85.90108309615992,16.0
+85.90108309615992,17.0
+89.89631857449783,17.0
+89.89631857449783,18.0
+93.30385353938895,18.0
+93.30385353938895,19.0
+99.1773182113225,19.0
+99.1773182113225,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+5.825058556527252,0.0
+5.825058556527252,1.0
+13.168886274717995,1.0
+13.168886274717995,2.0
+30.128249628371755,2.0
+30.128249628371755,3.0
+34.78120275387815,3.0
+34.78120275387815,4.0
+38.77817446180527,4.0
+38.77817446180527,5.0
+42.41317436660716,5.0
+42.41317436660716,6.0
+48.851896598307576,6.0
+48.851896598307576,7.0
+52.384260042194825,7.0
+52.384260042194825,8.0
+62.07855820919732,8.0
+62.07855820919732,9.0
+69.62708767869707,9.0
+69.62708767869707,10.0
+75.83880376348431,10.0
+75.83880376348431,11.0
+84.73983003910477,11.0
+84.73983003910477,12.0
+88.65213093987117,12.0
+88.65213093987117,13.0
+93.22526408239692,13.0
+93.22526408239692,14.0
+98.78474934305254,14.0
+98.78474934305254,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff3f3f" encoding="csv">0.0,0.0
+5.519015766708432,0.0
+5.519015766708432,1.0
+18.65562477213354,1.0
+18.65562477213354,2.0
+28.207644439873444,2.0
+28.207644439873444,3.0
+38.25823348989896,3.0
+38.25823348989896,4.0
+45.33999921011706,4.0
+45.33999921011706,5.0
+53.649637843019406,5.0
+53.649637843019406,6.0
+57.41505842914606,6.0
+57.41505842914606,7.0
+60.565108444827224,7.0
+60.565108444827224,8.0
+65.39729520604777,8.0
+65.39729520604777,9.0
+70.60166250535335,9.0
+70.60166250535335,10.0
+75.03364068958956,10.0
+75.03364068958956,11.0
+79.11932040827189,11.0
+79.11932040827189,12.0
+89.86948447753025,12.0
+89.86948447753025,13.0
+95.09698666703527,13.0
+95.09698666703527,14.0
+98.90744622193895,14.0
+98.90744622193895,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff4040" encoding="csv">0.0,0.0
+4.838855332373524,0.0
+4.838855332373524,1.0
+12.532013419657769,1.0
+12.532013419657769,2.0
+17.15813819971575,2.0
+17.15813819971575,3.0
+20.625946329601813,3.0
+20.625946329601813,4.0
+27.31430503997929,4.0
+27.31430503997929,5.0
+30.646075042841872,5.0
+30.646075042841872,6.0
+35.73824013521548,6.0
+35.73824013521548,7.0
+41.282328993187065,7.0
+41.282328993187065,8.0
+46.914659554183956,8.0
+46.914659554183956,9.0
+51.871758525205294,9.0
+51.871758525205294,10.0
+57.20187493703127,10.0
+57.20187493703127,11.0
+65.24995374114013,11.0
+65.24995374114013,12.0
+70.06078611731456,12.0
+70.06078611731456,13.0
+76.4497688611892,13.0
+76.4497688611892,14.0
+80.3723955208996,14.0
+80.3723955208996,15.0
+86.0988412945097,15.0
+86.0988412945097,16.0
+90.10537541471807,16.0
+90.10537541471807,17.0
+96.72291977141434,17.0
+96.72291977141434,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff4141" encoding="csv">0.0,0.0
+6.521670534744773,0.0
+6.521670534744773,1.0
+19.93878320488259,1.0
+19.93878320488259,2.0
+24.015624899744612,2.0
+24.015624899744612,3.0
+28.389772294276295,3.0
+28.389772294276295,4.0
+32.48807477402103,4.0
+32.48807477402103,5.0
+37.779910933944336,5.0
+37.779910933944336,6.0
+42.67944493896546,6.0
+42.67944493896546,7.0
+46.0419400398293,7.0
+46.0419400398293,8.0
+53.44564660046881,8.0
+53.44564660046881,9.0
+57.145090124938676,9.0
+57.145090124938676,10.0
+62.44138359825695,10.0
+62.44138359825695,11.0
+66.50127142392476,11.0
+66.50127142392476,12.0
+69.58818578075109,12.0
+69.58818578075109,13.0
+73.97285928061599,13.0
+73.97285928061599,14.0
+77.9671463920532,14.0
+77.9671463920532,15.0
+84.74041804516328,15.0
+84.74041804516328,16.0
+90.50907838778758,16.0
+90.50907838778758,17.0
+95.39956039300863,17.0
+95.39956039300863,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff4242" encoding="csv">0.0,0.0
+3.1534330725485447,0.0
+3.1534330725485447,1.0
+11.328742277914902,1.0
+11.328742277914902,2.0
+17.361059748849833,2.0
+17.361059748849833,3.0
+33.13379560481953,3.0
+33.13379560481953,4.0
+39.158160482892406,4.0
+39.158160482892406,5.0
+48.237699630775865,5.0
+48.237699630775865,6.0
+57.64328259191798,6.0
+57.64328259191798,7.0
+62.27402167103765,7.0
+62.27402167103765,8.0
+66.9716053585717,8.0
+66.9716053585717,9.0
+70.9816426649865,9.0
+70.9816426649865,10.0
+77.09368086830963,10.0
+77.09368086830963,11.0
+84.48796699174783,11.0
+84.48796699174783,12.0
+88.32385675117027,12.0
+88.32385675117027,13.0
+92.50548805490057,13.0
+92.50548805490057,14.0
+96.88912537571427,14.0
+96.88912537571427,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff4343" encoding="csv">0.0,0.0
+4.9733263407205985,0.0
+4.9733263407205985,1.0
+14.823413875645326,1.0
+14.823413875645326,2.0
+22.363210108479212,2.0
+22.363210108479212,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4444" encoding="csv">0.0,0.0
+4.000198253996316,0.0
+4.000198253996316,1.0
+21.637156910675646,1.0
+21.637156910675646,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4545" encoding="csv">0.0,0.0
+5.954919921201617,0.0
+5.954919921201617,1.0
+17.93704026956095,1.0
+17.93704026956095,2.0
+23.392759666791846,2.0
+23.392759666791846,3.0
+29.268661498236582,3.0
+29.268661498236582,4.0
+32.983142016685065,4.0
+32.983142016685065,5.0
+37.95265482549769,5.0
+37.95265482549769,6.0
+41.325343368626456,6.0
+41.325343368626456,7.0
+47.94232021750634,7.0
+47.94232021750634,8.0
+52.01689249978222,8.0
+52.01689249978222,9.0
+56.25002778769651,9.0
+56.25002778769651,10.0
+61.033533470716684,10.0
+61.033533470716684,11.0
+65.87767374754216,11.0
+65.87767374754216,12.0
+71.92571369034883,12.0
+71.92571369034883,13.0
+75.35705185471767,13.0
+75.35705185471767,14.0
+78.71313653488761,14.0
+78.71313653488761,15.0
+83.9789552690415,15.0
+83.9789552690415,16.0
+88.11662387377419,16.0
+88.11662387377419,17.0
+92.13259893605517,17.0
+92.13259893605517,18.0
+96.4299755055908,18.0
+96.4299755055908,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff4646" encoding="csv">0.0,0.0
+5.286193094994232,0.0
+5.286193094994232,1.0
+23.38563779256365,1.0
+23.38563779256365,2.0
+29.52534253389779,2.0
+29.52534253389779,3.0
+34.03707330147921,3.0
+34.03707330147921,4.0
+37.2775804836503,4.0
+37.2775804836503,5.0
+42.417461372948715,5.0
+42.417461372948715,6.0
+47.80617074421482,6.0
+47.80617074421482,7.0
+51.251569323850994,7.0
+51.251569323850994,8.0
+55.05071169193122,8.0
+55.05071169193122,9.0
+61.36258383812734,9.0
+61.36258383812734,10.0
+64.97054482700607,10.0
+64.97054482700607,11.0
+71.81903827776485,11.0
+71.81903827776485,12.0
+76.00574906812761,12.0
+76.00574906812761,13.0
+80.60990746732989,13.0
+80.60990746732989,14.0
+83.94982969296505,14.0
+83.94982969296505,15.0
+87.39040306881198,15.0
+87.39040306881198,16.0
+90.98423734058804,16.0
+90.98423734058804,17.0
+96.84894658248894,17.0
+96.84894658248894,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+7.543489605575535,0.0
+7.543489605575535,1.0
+14.462760774076234,1.0
+14.462760774076234,2.0
+20.664868592739893,2.0
+20.664868592739893,3.0
+24.72990963180323,3.0
+24.72990963180323,4.0
+27.941442069774048,4.0
+27.941442069774048,5.0
+34.36891101864322,5.0
+34.36891101864322,6.0
+38.01776143748949,6.0
+38.01776143748949,7.0
+45.70692406520455,7.0
+45.70692406520455,8.0
+52.29516911195503,8.0
+52.29516911195503,9.0
+56.62603385885321,9.0
+56.62603385885321,10.0
+63.13046357839433,10.0
+63.13046357839433,11.0
+66.66502350513302,11.0
+66.66502350513302,12.0
+73.50189531567554,12.0
+73.50189531567554,13.0
+82.64312044865751,13.0
+82.64312044865751,14.0
+88.34148383705516,14.0
+88.34148383705516,15.0
+92.1343175813057,15.0
+92.1343175813057,16.0
+99.46613963496175,16.0
+99.46613963496175,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+5.637648242547026,0.0
+5.637648242547026,1.0
+9.897995675819645,1.0
+9.897995675819645,2.0
+17.555555728615055,2.0
+17.555555728615055,3.0
+23.59274767185677,3.0
+23.59274767185677,4.0
+29.34525434559068,4.0
+29.34525434559068,5.0
+34.42568292366772,5.0
+34.42568292366772,6.0
+39.20261276864239,6.0
+39.20261276864239,7.0
+47.13269409157892,7.0
+47.13269409157892,8.0
+50.477840213278476,8.0
+50.477840213278476,9.0
+57.14224543185012,9.0
+57.14224543185012,10.0
+61.567389675300845,10.0
+61.567389675300845,11.0
+64.67760971347201,11.0
+64.67760971347201,12.0
+69.12478029026235,12.0
+69.12478029026235,13.0
+72.39780835456523,13.0
+72.39780835456523,14.0
+76.26458994778757,14.0
+76.26458994778757,15.0
+80.20111872584519,15.0
+80.20111872584519,16.0
+86.88010603913503,16.0
+86.88010603913503,17.0
+90.27204189882613,17.0
+90.27204189882613,18.0
+94.66805729693878,18.0
+94.66805729693878,19.0
+98.4325839155831,19.0
+98.4325839155831,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff4848" encoding="csv">0.0,0.0
+4.067187859569019,0.0
+4.067187859569019,1.0
+10.776171302535737,1.0
+10.776171302535737,2.0
+22.96792421380269,2.0
+22.96792421380269,3.0
+30.526929095862492,3.0
+30.526929095862492,4.0
+37.983695037761315,4.0
+37.983695037761315,5.0
+43.28732872716289,5.0
+43.28732872716289,6.0
+48.81082751812271,6.0
+48.81082751812271,7.0
+53.62296438544753,7.0
+53.62296438544753,8.0
+57.51547972338071,8.0
+57.51547972338071,9.0
+61.235824848313385,9.0
+61.235824848313385,10.0
+64.75580630289778,10.0
+64.75580630289778,11.0
+70.57094199774725,11.0
+70.57094199774725,12.0
+74.53355126803332,12.0
+74.53355126803332,13.0
+79.04862420210404,13.0
+79.04862420210404,14.0
+83.40887191155895,14.0
+83.40887191155895,15.0
+87.07740576895254,15.0
+87.07740576895254,16.0
+92.21285184583114,16.0
+92.21285184583114,17.0
+96.15931798694282,17.0
+96.15931798694282,18.0
+100.0,18.0
+					</series>
+					<series title="" type="l" color="0xff4949" encoding="csv">0.0,0.0
+5.783787661895833,0.0
+5.783787661895833,1.0
+12.765064512193668,1.0
+12.765064512193668,2.0
+25.662557176310784,2.0
+25.662557176310784,3.0
+30.32664437681307,3.0
+30.32664437681307,4.0
+36.588350857343,4.0
+36.588350857343,5.0
+40.91058506736315,5.0
+40.91058506736315,6.0
+44.12388642695812,6.0
+44.12388642695812,7.0
+48.307601288095036,7.0
+48.307601288095036,8.0
+57.349940382855756,8.0
+57.349940382855756,9.0
+62.59875262808144,9.0
+62.59875262808144,10.0
+68.88395072635744,10.0
+68.88395072635744,11.0
+73.82779515450346,11.0
+73.82779515450346,12.0
+77.15299396992556,12.0
+77.15299396992556,13.0
+83.25269285460622,13.0
+83.25269285460622,14.0
+88.15974683148234,14.0
+88.15974683148234,15.0
+93.0517235766399,15.0
+93.0517235766399,16.0
+96.7890715071277,16.0
+96.7890715071277,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff4a4a" encoding="csv">0.0,0.0
+4.812661131410816,0.0
+4.812661131410816,1.0
+16.56904966588857,1.0
+16.56904966588857,2.0
+20.692776456219104,2.0
+20.692776456219104,3.0
+25.738391632901184,3.0
+25.738391632901184,4.0
+31.423861423907216,4.0
+31.423861423907216,5.0
+35.17878545490418,5.0
+35.17878545490418,6.0
+40.120320181784365,6.0
+40.120320181784365,7.0
+45.35040287358347,7.0
+45.35040287358347,8.0
+49.331327952910456,8.0
+49.331327952910456,9.0
+54.32501647209798,9.0
+54.32501647209798,10.0
+58.65638961975418,10.0
+58.65638961975418,11.0
+67.92099228321518,11.0
+67.92099228321518,12.0
+72.10093204219817,12.0
+72.10093204219817,13.0
+78.5446856015804,13.0
+78.5446856015804,14.0
+82.28589599707105,14.0
+82.28589599707105,15.0
+85.71691230884373,15.0
+85.71691230884373,16.0
+90.21051028786033,16.0
+90.21051028786033,17.0
+93.63123546187539,17.0
+93.63123546187539,18.0
+99.41665052150373,18.0
+99.41665052150373,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff4b4b" encoding="csv">0.0,0.0
+3.911266333524046,0.0
+3.911266333524046,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4c4c" encoding="csv">0.0,0.0
+5.086244653563172,0.0
+5.086244653563172,1.0
+11.005004075440894,1.0
+11.005004075440894,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4d4d" encoding="csv">0.0,0.0
+5.961213448001036,0.0
+5.961213448001036,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4e4e" encoding="csv">0.0,0.0
+9.012769785017555,0.0
+9.012769785017555,1.0
+26.191517812577757,1.0
+26.191517812577757,2.0
+30.917947359357285,2.0
+30.917947359357285,3.0
+36.64378473507255,3.0
+36.64378473507255,4.0
+40.360314677770305,4.0
+40.360314677770305,5.0
+44.05878221278089,5.0
+44.05878221278089,6.0
+48.334603009554755,6.0
+48.334603009554755,7.0
+52.40358205634612,7.0
+52.40358205634612,8.0
+58.113020644387724,8.0
+58.113020644387724,9.0
+64.00442383254362,9.0
+64.00442383254362,10.0
+68.52746552082748,10.0
+68.52746552082748,11.0
+73.61986151203416,11.0
+73.61986151203416,12.0
+79.2446308200649,12.0
+79.2446308200649,13.0
+82.95674557834359,13.0
+82.95674557834359,14.0
+88.81594423472013,14.0
+88.81594423472013,15.0
+92.9845129450291,15.0
+92.9845129450291,16.0
+96.43919142745284,16.0
+96.43919142745284,17.0
+100.0,17.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+3.522207792709816,0.0
+3.522207792709816,1.0
+8.503467662190507,1.0
+8.503467662190507,2.0
+18.80521866238467,2.0
+18.80521866238467,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+3.696946801476952,0.0
+3.696946801476952,1.0
+12.763457646993757,1.0
+12.763457646993757,2.0
+24.01729923097196,2.0
+24.01729923097196,3.0
+28.23012631542529,3.0
+28.23012631542529,4.0
+35.77647813780324,4.0
+35.77647813780324,5.0
+41.46471049156944,5.0
+41.46471049156944,6.0
+47.04330143398995,6.0
+47.04330143398995,7.0
+50.92051497314571,7.0
+50.92051497314571,8.0
+55.7120868734792,8.0
+55.7120868734792,9.0
+62.05424565280035,9.0
+62.05424565280035,10.0
+66.59221054972141,10.0
+66.59221054972141,11.0
+69.83621561202435,11.0
+69.83621561202435,12.0
+74.65513908526857,12.0
+74.65513908526857,13.0
+78.18643169012763,13.0
+78.18643169012763,14.0
+82.34190664760459,14.0
+82.34190664760459,15.0
+86.21859088152753,15.0
+86.21859088152753,16.0
+89.85429382928469,16.0
+89.85429382928469,17.0
+94.90973983561635,17.0
+94.90973983561635,18.0
+99.16331130649085,18.0
+99.16331130649085,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff5050" encoding="csv">0.0,0.0
+6.43972175954778,0.0
+6.43972175954778,1.0
+24.162540909983242,1.0
+24.162540909983242,2.0
+29.382234120653955,2.0
+29.382234120653955,3.0
+34.159973954121185,3.0
+34.159973954121185,4.0
+38.42542994576763,4.0
+38.42542994576763,5.0
+42.942444541557784,5.0
+42.942444541557784,6.0
+46.2745952696769,6.0
+46.2745952696769,7.0
+52.85576282936865,7.0
+52.85576282936865,8.0
+57.87390304808698,8.0
+57.87390304808698,9.0
+64.08282317503127,9.0
+64.08282317503127,10.0
+71.33922826456288,10.0
+71.33922826456288,11.0
+75.94327479224484,11.0
+75.94327479224484,12.0
+80.0863180641093,12.0
+80.0863180641093,13.0
+87.41266314859357,13.0
+87.41266314859357,14.0
+90.95748835495354,14.0
+90.95748835495354,15.0
+94.93306103584953,15.0
+94.93306103584953,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff5151" encoding="csv">0.0,0.0
+6.760337661754306,0.0
+6.760337661754306,1.0
+24.71154360504568,1.0
+24.71154360504568,2.0
+30.98585390536329,2.0
+30.98585390536329,3.0
+35.04468581452203,3.0
+35.04468581452203,4.0
+42.35569695187919,4.0
+42.35569695187919,5.0
+47.9812829472632,5.0
+47.9812829472632,6.0
+53.41371679468363,6.0
+53.41371679468363,7.0
+59.46943689040179,7.0
+59.46943689040179,8.0
+62.63619364600857,8.0
+62.63619364600857,9.0
+67.76659117670766,9.0
+67.76659117670766,10.0
+73.62739010494978,10.0
+73.62739010494978,11.0
+79.7176179521813,11.0
+79.7176179521813,12.0
+83.31177471425406,12.0
+83.31177471425406,13.0
+87.7014754796083,13.0
+87.7014754796083,14.0
+91.34961408445646,14.0
+91.34961408445646,15.0
+95.22143946128512,15.0
+95.22143946128512,16.0
+100.0,16.0
+					</series>
+					<series title="" type="l" color="0xff5252" encoding="csv">0.0,0.0
+18.7791619096113,0.0
+18.7791619096113,1.0
+27.54955325478651,1.0
+27.54955325478651,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5353" encoding="csv">0.0,0.0
+5.95919687939131,0.0
+5.95919687939131,1.0
+15.119740940027746,1.0
+15.119740940027746,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5454" encoding="csv">0.0,0.0
+32.59666278125102,0.0
+32.59666278125102,1.0
+41.95968075476415,1.0
+41.95968075476415,2.0
+45.87598292228908,2.0
+45.87598292228908,3.0
+49.636051731558396,3.0
+49.636051731558396,4.0
+57.88903949848878,4.0
+57.88903949848878,5.0
+61.387693980129754,5.0
+61.387693980129754,6.0
+65.20846233600814,6.0
+65.20846233600814,7.0
+71.41132867373385,7.0
+71.41132867373385,8.0
+76.46567709897369,8.0
+76.46567709897369,9.0
+79.49579110645135,9.0
+79.49579110645135,10.0
+83.12699904900846,10.0
+83.12699904900846,11.0
+86.95788868406476,11.0
+86.95788868406476,12.0
+90.69158023394142,12.0
+90.69158023394142,13.0
+94.9084391905376,13.0
+94.9084391905376,14.0
+98.91466533778346,14.0
+98.91466533778346,15.0
+100.0,15.0
+					</series>
+					<series title="" type="l" color="0xff5555" encoding="csv">0.0,0.0
+5.912631359688513,0.0
+5.912631359688513,1.0
+9.69687368278384,1.0
+9.69687368278384,2.0
+19.018058958821968,2.0
+19.018058958821968,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff5656" encoding="csv">0.0,0.0
+3.963086640765408,0.0
+3.963086640765408,1.0
+9.091449264509484,1.0
+9.091449264509484,2.0
+17.720836775219833,2.0
+17.720836775219833,3.0
+22.123907790445834,3.0
+22.123907790445834,4.0
+31.73432682960158,4.0
+31.73432682960158,5.0
+38.93604646445563,5.0
+38.93604646445563,6.0
+43.391774890778734,6.0
+43.391774890778734,7.0
+46.84238914595302,7.0
+46.84238914595302,8.0
+50.25034919576585,8.0
+50.25034919576585,9.0
+54.482122129243265,9.0
+54.482122129243265,10.0
+58.891119556435534,10.0
+58.891119556435534,11.0
+65.05301877878767,11.0
+65.05301877878767,12.0
+69.78651380541665,12.0
+69.78651380541665,13.0
+74.00003755487214,13.0
+74.00003755487214,14.0
+78.9334785790366,14.0
+78.9334785790366,15.0
+83.97507938739236,15.0
+83.97507938739236,16.0
+89.31559063339894,16.0
+89.31559063339894,17.0
+93.77523153325826,17.0
+93.77523153325826,18.0
+97.70631427646775,18.0
+97.70631427646775,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+10.064030868476232,0.0
+10.064030868476232,1.0
+13.924174090524009,1.0
+13.924174090524009,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+6.108768412127737,0.0
+6.108768412127737,1.0
+17.551209150153053,1.0
+17.551209150153053,2.0
+24.46859465206175,2.0
+24.46859465206175,3.0
+29.795903174001666,3.0
+29.795903174001666,4.0
+50.54302071848541,4.0
+50.54302071848541,5.0
+60.48299815442098,5.0
+60.48299815442098,6.0
+65.11092314661482,6.0
+65.11092314661482,7.0
+68.74802130489675,7.0
+68.74802130489675,8.0
+73.96403154899266,8.0
+73.96403154899266,9.0
+78.43229474626892,9.0
+78.43229474626892,10.0
+84.38567421139273,10.0
+84.38567421139273,11.0
+90.05196815734378,11.0
+90.05196815734378,12.0
+96.67263411262397,12.0
+96.67263411262397,13.0
+100.0,13.0
+					</series>
+					<series title="" type="l" color="0xff5858" encoding="csv">0.0,0.0
+3.3566223150593806,0.0
+3.3566223150593806,1.0
+13.449927003666371,1.0
+13.449927003666371,2.0
+24.754539138179645,2.0
+24.754539138179645,3.0
+32.436573656112955,3.0
+32.436573656112955,4.0
+37.49229992011517,4.0
+37.49229992011517,5.0
+42.05190467237781,5.0
+42.05190467237781,6.0
+47.83862511508644,6.0
+47.83862511508644,7.0
+51.35458600318189,7.0
+51.35458600318189,8.0
+56.13229074265365,8.0
+56.13229074265365,9.0
+60.504832546815685,9.0
+60.504832546815685,10.0
+63.9070163321385,10.0
+63.9070163321385,11.0
+67.63204209298652,11.0
+67.63204209298652,12.0
+73.43170661757235,12.0
+73.43170661757235,13.0
+77.79365469015623,13.0
+77.79365469015623,14.0
+82.56031941629885,14.0
+82.56031941629885,15.0
+86.14200851514948,15.0
+86.14200851514948,16.0
+90.96293566611534,16.0
+90.96293566611534,17.0
+95.12906142172983,17.0
+95.12906142172983,18.0
+98.40467387919944,18.0
+98.40467387919944,19.0
+100.0,19.0
+					</series>
+					<comment/>
+				</plot>
+			</result>
+		</query>
+		<query>
+			<formula>strategy Finish = control : A&lt;&gt;(vehi1.exit and vehi2.exit and vehi3.exit)//will not work unless all chans are broadcast</formula>
+			<comment>A[] forall(i:id_t) forall(j:id_t) Train(i).Cross &amp;&amp; Train(j)…</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:54:39 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} under Finish//will not work unless all chans are broadcast</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:54:39 +0200">
+				<plot title="Simulations (100)" xaxis="time" yaxis="value">
+					<series title="obs7.social_cost" type="l" color="0xff0000" encoding="csv">0.0,0.0
+4.246998121144727,0.0
+4.246998121144727,1.0
+8.125395948286751,1.0
+8.125395948286751,2.0
+23.945080774683092,2.0
+23.945080774683092,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0101" encoding="csv">0.0,0.0
+6.9921332200993405,0.0
+6.9921332200993405,1.0
+43.4991070299147,1.0
+43.4991070299147,2.0
+53.39111074467403,2.0
+53.39111074467403,3.0
+67.1594789061991,3.0
+67.1594789061991,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff0202" encoding="csv">0.0,0.0
+5.737231275051214,0.0
+5.737231275051214,1.0
+10.236771240626918,1.0
+10.236771240626918,2.0
+59.947400600681696,2.0
+59.947400600681696,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0303" encoding="csv">0.0,0.0
+7.358609145491956,0.0
+7.358609145491956,1.0
+40.91460344179553,1.0
+40.91460344179553,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+4.388611272148264,0.0
+4.388611272148264,1.0
+8.159928415912828,1.0
+8.159928415912828,2.0
+61.59620733196434,2.0
+61.59620733196434,3.0
+73.21222256083772,3.0
+73.21222256083772,4.0
+80.18686439857935,4.0
+80.18686439857935,5.0
+100.0,5.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+6.29006499938362,0.0
+6.29006499938362,1.0
+10.357678348693206,1.0
+10.357678348693206,2.0
+22.97413227299523,2.0
+22.97413227299523,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0505" encoding="csv">0.0,0.0
+5.7179407239060644,0.0
+5.7179407239060644,1.0
+9.404222456293102,1.0
+9.404222456293102,2.0
+89.37680265470617,2.0
+89.37680265470617,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0606" encoding="csv">0.0,0.0
+5.769674292562439,0.0
+5.769674292562439,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0707" encoding="csv">0.0,0.0
+7.398895644957214,0.0
+7.398895644957214,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0808" encoding="csv">0.0,0.0
+3.7982413979561698,0.0
+3.7982413979561698,1.0
+7.317037707943739,1.0
+7.317037707943739,2.0
+33.63531384204438,2.0
+33.63531384204438,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0909" encoding="csv">0.0,0.0
+7.660243858508506,0.0
+7.660243858508506,1.0
+33.01179399937136,1.0
+33.01179399937136,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0a0a" encoding="csv">0.0,0.0
+6.422210555533924,0.0
+6.422210555533924,1.0
+58.45671848592338,1.0
+58.45671848592338,2.0
+65.50907596379083,2.0
+65.50907596379083,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0b0b" encoding="csv">0.0,0.0
+8.44554613119859,0.0
+8.44554613119859,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+5.457149561135565,0.0
+5.457149561135565,1.0
+75.49346317395916,1.0
+75.49346317395916,2.0
+86.28287503805943,2.0
+86.28287503805943,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+8.402613813861292,0.0
+8.402613813861292,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0d0d" encoding="csv">0.0,0.0
+6.1229301711300606,0.0
+6.1229301711300606,1.0
+9.878315342777812,1.0
+9.878315342777812,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0e0e" encoding="csv">0.0,0.0
+5.14019589455494,0.0
+5.14019589455494,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0f0f" encoding="csv">0.0,0.0
+8.96387198586591,0.0
+8.96387198586591,1.0
+12.985409346913434,1.0
+12.985409346913434,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1010" encoding="csv">0.0,0.0
+4.288343370827781,0.0
+4.288343370827781,1.0
+9.45193999504773,1.0
+9.45193999504773,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1111" encoding="csv">0.0,0.0
+8.110374091483386,0.0
+8.110374091483386,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1212" encoding="csv">0.0,0.0
+6.938851275425743,0.0
+6.938851275425743,1.0
+96.88596785288776,1.0
+96.88596785288776,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1313" encoding="csv">0.0,0.0
+6.301038300498095,0.0
+6.301038300498095,1.0
+60.74890335078086,1.0
+60.74890335078086,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1414" encoding="csv">0.0,0.0
+4.311920638717047,0.0
+4.311920638717047,1.0
+8.760386010496731,1.0
+8.760386010496731,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+5.64685958518441,0.0
+5.64685958518441,1.0
+59.89437311425121,1.0
+59.89437311425121,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+5.089064419203604,0.0
+5.089064419203604,1.0
+8.744039998388486,1.0
+8.744039998388486,2.0
+61.087942680778006,2.0
+61.087942680778006,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff1616" encoding="csv">0.0,0.0
+4.609972712214941,0.0
+4.609972712214941,1.0
+8.320172482562894,1.0
+8.320172482562894,2.0
+83.6355266111078,2.0
+83.6355266111078,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff1717" encoding="csv">0.0,0.0
+5.423266933823864,0.0
+5.423266933823864,1.0
+10.20799171409254,1.0
+10.20799171409254,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1818" encoding="csv">0.0,0.0
+6.432788420108821,0.0
+6.432788420108821,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1919" encoding="csv">0.0,0.0
+5.7703279705628026,0.0
+5.7703279705628026,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1a1a" encoding="csv">0.0,0.0
+5.281816612115458,0.0
+5.281816612115458,1.0
+9.748517106982687,1.0
+9.748517106982687,2.0
+58.50903816455573,2.0
+58.50903816455573,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff1b1b" encoding="csv">0.0,0.0
+5.401595347222278,0.0
+5.401595347222278,1.0
+9.412558806463215,1.0
+9.412558806463215,2.0
+87.81605510704937,2.0
+87.81605510704937,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff1c1c" encoding="csv">0.0,0.0
+7.79372256454684,0.0
+7.79372256454684,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+4.432015928504129,0.0
+4.432015928504129,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+5.584276334679468,0.0
+5.584276334679468,1.0
+9.13178971946747,1.0
+9.13178971946747,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1e1e" encoding="csv">0.0,0.0
+7.764731779556887,0.0
+7.764731779556887,1.0
+66.6426757744669,1.0
+66.6426757744669,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1f1f" encoding="csv">0.0,0.0
+5.26268496550398,0.0
+5.26268496550398,1.0
+43.84829055050386,1.0
+43.84829055050386,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2020" encoding="csv">0.0,0.0
+6.615042957401885,0.0
+6.615042957401885,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2121" encoding="csv">0.0,0.0
+6.925452711477155,0.0
+6.925452711477155,1.0
+11.772740365456377,1.0
+11.772740365456377,2.0
+63.872596806919,2.0
+63.872596806919,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff2222" encoding="csv">0.0,0.0
+8.046526858776247,0.0
+8.046526858776247,1.0
+11.516444130876927,1.0
+11.516444130876927,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2323" encoding="csv">0.0,0.0
+4.359176874570567,0.0
+4.359176874570567,1.0
+33.60180625153418,1.0
+33.60180625153418,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2424" encoding="csv">0.0,0.0
+5.025468239073289,0.0
+5.025468239073289,1.0
+9.213742209556157,1.0
+9.213742209556157,2.0
+14.761363543038645,2.0
+14.761363543038645,3.0
+72.70066953702367,3.0
+72.70066953702367,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+3.972032590303479,0.0
+3.972032590303479,1.0
+9.609460740101175,1.0
+9.609460740101175,2.0
+22.21971524928105,2.0
+22.21971524928105,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+4.792410501473759,0.0
+4.792410501473759,1.0
+8.50226302278599,1.0
+8.50226302278599,2.0
+91.11082197445407,2.0
+91.11082197445407,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff2626" encoding="csv">0.0,0.0
+7.512939457003692,0.0
+7.512939457003692,1.0
+11.018784522560026,1.0
+11.018784522560026,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2727" encoding="csv">0.0,0.0
+4.98549002259694,0.0
+4.98549002259694,1.0
+9.10499391733558,1.0
+9.10499391733558,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2828" encoding="csv">0.0,0.0
+8.253055026108617,0.0
+8.253055026108617,1.0
+29.913366971635902,1.0
+29.913366971635902,2.0
+42.86180794146094,2.0
+42.86180794146094,3.0
+53.14149854605873,3.0
+53.14149854605873,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff2929" encoding="csv">0.0,0.0
+11.005325272015591,0.0
+11.005325272015591,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2a2a" encoding="csv">0.0,0.0
+5.1756808160927115,0.0
+5.1756808160927115,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2b2b" encoding="csv">0.0,0.0
+8.758584962708689,0.0
+8.758584962708689,1.0
+13.855391914644239,1.0
+13.855391914644239,2.0
+27.298986861434415,2.0
+27.298986861434415,3.0
+36.538901574217455,3.0
+36.538901574217455,4.0
+44.97971104607172,4.0
+44.97971104607172,5.0
+100.0,5.0
+					</series>
+					<series title="" type="l" color="0xff2c2c" encoding="csv">0.0,0.0
+9.45995788561558,0.0
+9.45995788561558,1.0
+52.25004020737515,1.0
+52.25004020737515,2.0
+84.1140526587282,2.0
+84.1140526587282,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff2d2d" encoding="csv">0.0,0.0
+6.692884943985105,0.0
+6.692884943985105,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+7.0624618780703905,0.0
+7.0624618780703905,1.0
+96.63696612207583,1.0
+96.63696612207583,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+5.6649281259598006,0.0
+5.6649281259598006,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2f2f" encoding="csv">0.0,0.0
+4.92494027226178,0.0
+4.92494027226178,1.0
+8.181600967989372,1.0
+8.181600967989372,2.0
+50.324012791547254,2.0
+50.324012791547254,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff3030" encoding="csv">0.0,0.0
+3.855368010105822,0.0
+3.855368010105822,1.0
+8.791227127140456,1.0
+8.791227127140456,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3131" encoding="csv">0.0,0.0
+4.319290477627933,0.0
+4.319290477627933,1.0
+10.38115964623667,1.0
+10.38115964623667,2.0
+38.05727665402515,2.0
+38.05727665402515,3.0
+50.83620113115606,3.0
+50.83620113115606,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff3232" encoding="csv">0.0,0.0
+7.497820298557269,0.0
+7.497820298557269,1.0
+11.934096997390236,1.0
+11.934096997390236,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3333" encoding="csv">0.0,0.0
+3.7901738814063783,0.0
+3.7901738814063783,1.0
+61.34799542221313,1.0
+61.34799542221313,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3434" encoding="csv">0.0,0.0
+6.851575741283327,0.0
+6.851575741283327,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3535" encoding="csv">0.0,0.0
+5.9104874780020324,0.0
+5.9104874780020324,1.0
+38.99846253768294,1.0
+38.99846253768294,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+4.4369122268277685,0.0
+4.4369122268277685,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+3.563654127616963,0.0
+3.563654127616963,1.0
+6.708663718448786,1.0
+6.708663718448786,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3737" encoding="csv">0.0,0.0
+3.16713230728825,0.0
+3.16713230728825,1.0
+6.453853681274937,1.0
+6.453853681274937,2.0
+43.59837789965029,2.0
+43.59837789965029,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff3838" encoding="csv">0.0,0.0
+3.9641649120173854,0.0
+3.9641649120173854,1.0
+9.828686232316128,1.0
+9.828686232316128,2.0
+24.37330915790218,2.0
+24.37330915790218,3.0
+31.481457443155193,3.0
+31.481457443155193,4.0
+38.285202194884214,4.0
+38.285202194884214,5.0
+100.0,5.0
+					</series>
+					<series title="" type="l" color="0xff3939" encoding="csv">0.0,0.0
+5.392669557762813,0.0
+5.392669557762813,1.0
+9.17204419058276,1.0
+9.17204419058276,2.0
+94.5587315398519,2.0
+94.5587315398519,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff3a3a" encoding="csv">0.0,0.0
+3.8049681710830137,0.0
+3.8049681710830137,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3b3b" encoding="csv">0.0,0.0
+4.515195023428853,0.0
+4.515195023428853,1.0
+9.100892864548149,1.0
+9.100892864548149,2.0
+72.62508674049647,2.0
+72.62508674049647,3.0
+84.24839298298892,3.0
+84.24839298298892,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff3c3c" encoding="csv">0.0,0.0
+3.451818224447008,0.0
+3.451818224447008,1.0
+7.951756701090469,1.0
+7.951756701090469,2.0
+25.42128627710746,2.0
+25.42128627710746,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff3d3d" encoding="csv">0.0,0.0
+5.880510689322247,0.0
+5.880510689322247,1.0
+9.412752794950636,1.0
+9.412752794950636,2.0
+29.088982874146122,2.0
+29.088982874146122,3.0
+34.9547719952425,3.0
+34.9547719952425,4.0
+47.44074815074783,4.0
+47.44074815074783,5.0
+52.226591494789965,5.0
+52.226591494789965,6.0
+100.0,6.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+8.553756805202868,0.0
+8.553756805202868,1.0
+17.34062651740877,1.0
+17.34062651740877,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+3.6948796658108805,0.0
+3.6948796658108805,1.0
+8.039734086409934,1.0
+8.039734086409934,2.0
+22.467517541758568,2.0
+22.467517541758568,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff3f3f" encoding="csv">0.0,0.0
+5.354209431271172,0.0
+5.354209431271172,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4040" encoding="csv">0.0,0.0
+8.339806969623305,0.0
+8.339806969623305,1.0
+12.593430851354727,1.0
+12.593430851354727,2.0
+61.5775931085739,2.0
+61.5775931085739,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4141" encoding="csv">0.0,0.0
+9.566511454016549,0.0
+9.566511454016549,1.0
+17.770836107359756,1.0
+17.770836107359756,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4242" encoding="csv">0.0,0.0
+3.8878841803355044,0.0
+3.8878841803355044,1.0
+9.27332311811919,1.0
+9.27332311811919,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4343" encoding="csv">0.0,0.0
+7.867229006863422,0.0
+7.867229006863422,1.0
+29.800482735663078,1.0
+29.800482735663078,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4444" encoding="csv">0.0,0.0
+5.445519868685436,0.0
+5.445519868685436,1.0
+8.78069842810606,1.0
+8.78069842810606,2.0
+44.56383464875842,2.0
+44.56383464875842,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4545" encoding="csv">0.0,0.0
+4.8261148143199,0.0
+4.8261148143199,1.0
+9.071752347164935,1.0
+9.071752347164935,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4646" encoding="csv">0.0,0.0
+4.603800579959054,0.0
+4.603800579959054,1.0
+38.56476899749082,1.0
+38.56476899749082,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+10.62275411829191,0.0
+10.62275411829191,1.0
+94.81336038511968,1.0
+94.81336038511968,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+6.379326331485132,0.0
+6.379326331485132,1.0
+72.59475987971358,1.0
+72.59475987971358,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4848" encoding="csv">0.0,0.0
+4.112883956916265,0.0
+4.112883956916265,1.0
+8.091860456615672,1.0
+8.091860456615672,2.0
+50.52153784349462,2.0
+50.52153784349462,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4949" encoding="csv">0.0,0.0
+8.199272962960352,0.0
+8.199272962960352,1.0
+13.789380044028967,1.0
+13.789380044028967,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4a4a" encoding="csv">0.0,0.0
+4.7028983929966515,0.0
+4.7028983929966515,1.0
+17.796478204885005,1.0
+17.796478204885005,2.0
+29.807410286508375,2.0
+29.807410286508375,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff4b4b" encoding="csv">0.0,0.0
+7.075043050855207,0.0
+7.075043050855207,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4c4c" encoding="csv">0.0,0.0
+7.513147546331119,0.0
+7.513147546331119,1.0
+71.83548047177385,1.0
+71.83548047177385,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4d4d" encoding="csv">0.0,0.0
+11.769092968341717,0.0
+11.769092968341717,1.0
+19.972443569565762,1.0
+19.972443569565762,2.0
+28.47831067986823,2.0
+28.47831067986823,3.0
+45.00722713304387,3.0
+45.00722713304387,4.0
+100.0,4.0
+					</series>
+					<series title="" type="l" color="0xff4e4e" encoding="csv">0.0,0.0
+3.6041771068024477,0.0
+3.6041771068024477,1.0
+93.29138543671199,1.0
+93.29138543671199,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+5.085655871932514,0.0
+5.085655871932514,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+5.384235826933433,0.0
+5.384235826933433,1.0
+10.965833110970161,1.0
+10.965833110970161,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5050" encoding="csv">0.0,0.0
+4.240805417166628,0.0
+4.240805417166628,1.0
+8.768766400410327,1.0
+8.768766400410327,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5151" encoding="csv">0.0,0.0
+5.070097097720253,0.0
+5.070097097720253,1.0
+9.59830506240101,1.0
+9.59830506240101,2.0
+70.20402397007004,2.0
+70.20402397007004,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff5252" encoding="csv">0.0,0.0
+4.700535953183974,0.0
+4.700535953183974,1.0
+9.272078831188338,1.0
+9.272078831188338,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5353" encoding="csv">0.0,0.0
+4.8701852514938295,0.0
+4.8701852514938295,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5454" encoding="csv">0.0,0.0
+6.563092114433497,0.0
+6.563092114433497,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5555" encoding="csv">0.0,0.0
+8.942075204532228,0.0
+8.942075204532228,1.0
+61.839123985189055,1.0
+61.839123985189055,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5656" encoding="csv">0.0,0.0
+7.30154356422943,0.0
+7.30154356422943,1.0
+29.35256733202279,1.0
+29.35256733202279,2.0
+37.728822297068206,2.0
+37.728822297068206,3.0
+42.568588681199515,3.0
+42.568588681199515,4.0
+56.168890343916715,4.0
+56.168890343916715,5.0
+63.65332394594413,5.0
+63.65332394594413,6.0
+100.0,6.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+6.167514099027572,0.0
+6.167514099027572,1.0
+9.449223514935138,1.0
+9.449223514935138,2.0
+40.98895350208299,2.0
+40.98895350208299,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+3.7006004286595724,0.0
+3.7006004286595724,1.0
+10.671100317023157,1.0
+10.671100317023157,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5858" encoding="csv">0.0,0.0
+10.859916986824274,0.0
+10.859916986824274,1.0
+100.0,1.0
+					</series>
+					<comment/>
+				</plot>
+			</result>
+		</query>
+		<query>
+			<formula>strategy SA = control : A[] !obs8.NotPass under Finish//will not work unless all chans are broadcast</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:54:55 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>simulate[&lt;=100;100]{obs7.social_cost} under SA//will not work unless all chans are broadcast</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-06-23 11:54:55 +0200">
+				<plot title="Simulations (100)" xaxis="time" yaxis="value">
+					<series title="obs7.social_cost" type="l" color="0xff0000" encoding="csv">0.0,0.0
+5.016321367889476,0.0
+5.016321367889476,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0101" encoding="csv">0.0,0.0
+5.129882316381425,0.0
+5.129882316381425,1.0
+12.244414183647534,1.0
+12.244414183647534,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0202" encoding="csv">0.0,0.0
+7.51565508681883,0.0
+7.51565508681883,1.0
+12.463300187344164,1.0
+12.463300187344164,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0303" encoding="csv">0.0,0.0
+7.348610698334761,0.0
+7.348610698334761,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+7.319034190860306,0.0
+7.319034190860306,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0404" encoding="csv">0.0,0.0
+10.086886009980084,0.0
+10.086886009980084,1.0
+17.940126757867198,1.0
+17.940126757867198,2.0
+23.30133384533883,2.0
+23.30133384533883,3.0
+26.957152176048155,3.0
+26.957152176048155,4.0
+30.64306977815589,4.0
+30.64306977815589,5.0
+34.095965981928,5.0
+34.095965981928,6.0
+37.91202270100368,6.0
+37.91202270100368,7.0
+42.48272852506577,7.0
+42.48272852506577,8.0
+45.520957735224385,8.0
+45.520957735224385,9.0
+48.72372042631954,9.0
+48.72372042631954,10.0
+54.315339138838,10.0
+54.315339138838,11.0
+57.44604667616829,11.0
+57.44604667616829,12.0
+62.869517634737804,12.0
+62.869517634737804,13.0
+67.94251018501657,13.0
+67.94251018501657,14.0
+73.19386299888983,14.0
+73.19386299888983,15.0
+76.45051029003392,15.0
+76.45051029003392,16.0
+81.7821506461368,16.0
+81.7821506461368,17.0
+87.30554380336658,17.0
+87.30554380336658,18.0
+91.18060704822513,18.0
+91.18060704822513,19.0
+97.50616245418092,19.0
+97.50616245418092,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff0505" encoding="csv">0.0,0.0
+6.114233403088754,0.0
+6.114233403088754,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0606" encoding="csv">0.0,0.0
+4.543958697634908,0.0
+4.543958697634908,1.0
+7.6871011029525285,1.0
+7.6871011029525285,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0707" encoding="csv">0.0,0.0
+5.198779584978229,0.0
+5.198779584978229,1.0
+10.222959456413275,1.0
+10.222959456413275,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0808" encoding="csv">0.0,0.0
+4.661955281267428,0.0
+4.661955281267428,1.0
+11.794704667416724,1.0
+11.794704667416724,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0909" encoding="csv">0.0,0.0
+5.705684340907628,0.0
+5.705684340907628,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0a0a" encoding="csv">0.0,0.0
+7.455820927712104,0.0
+7.455820927712104,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0b0b" encoding="csv">0.0,0.0
+7.411821264337496,0.0
+7.411821264337496,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+5.2421558822873555,0.0
+5.2421558822873555,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0c0c" encoding="csv">0.0,0.0
+9.594433447961157,0.0
+9.594433447961157,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0d0d" encoding="csv">0.0,0.0
+4.958553343354945,0.0
+4.958553343354945,1.0
+8.472513536969457,1.0
+8.472513536969457,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff0e0e" encoding="csv">0.0,0.0
+8.094888863591414,0.0
+8.094888863591414,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff0f0f" encoding="csv">0.0,0.0
+3.599394095678281,0.0
+3.599394095678281,1.0
+7.371622160037468,1.0
+7.371622160037468,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1010" encoding="csv">0.0,0.0
+3.596935590668557,0.0
+3.596935590668557,1.0
+10.704113722485035,1.0
+10.704113722485035,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1111" encoding="csv">0.0,0.0
+4.843452441901703,0.0
+4.843452441901703,1.0
+10.444897521952713,1.0
+10.444897521952713,2.0
+17.043312209313672,2.0
+17.043312209313672,3.0
+21.810724611825144,3.0
+21.810724611825144,4.0
+26.574295354332673,4.0
+26.574295354332673,5.0
+31.83390756704588,5.0
+31.83390756704588,6.0
+35.17582048118876,6.0
+35.17582048118876,7.0
+38.59201233569757,7.0
+38.59201233569757,8.0
+44.651854483667336,8.0
+44.651854483667336,9.0
+49.37852880341454,9.0
+49.37852880341454,10.0
+55.01462076047291,10.0
+55.01462076047291,11.0
+61.46735837375853,11.0
+61.46735837375853,12.0
+65.92220850219526,12.0
+65.92220850219526,13.0
+71.37267507243595,13.0
+71.37267507243595,14.0
+76.90606843468072,14.0
+76.90606843468072,15.0
+80.64096376589363,15.0
+80.64096376589363,16.0
+85.6495229152464,16.0
+85.6495229152464,17.0
+93.30618744174552,17.0
+93.30618744174552,18.0
+96.54973666836476,18.0
+96.54973666836476,19.0
+100.0,19.0
+					</series>
+					<series title="" type="l" color="0xff1212" encoding="csv">0.0,0.0
+4.147067379125806,0.0
+4.147067379125806,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1313" encoding="csv">0.0,0.0
+3.777139183824987,0.0
+3.777139183824987,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1414" encoding="csv">0.0,0.0
+7.054611281115731,0.0
+7.054611281115731,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+8.950076850987024,0.0
+8.950076850987024,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1515" encoding="csv">0.0,0.0
+4.767808998564248,0.0
+4.767808998564248,1.0
+8.959465070831701,1.0
+8.959465070831701,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1616" encoding="csv">0.0,0.0
+3.4786313321036113,0.0
+3.4786313321036113,1.0
+8.850750075827364,1.0
+8.850750075827364,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1717" encoding="csv">0.0,0.0
+4.7781372286076955,0.0
+4.7781372286076955,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1818" encoding="csv">0.0,0.0
+4.365855988852943,0.0
+4.365855988852943,1.0
+8.512622887824193,1.0
+8.512622887824193,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1919" encoding="csv">0.0,0.0
+5.7273665924109585,0.0
+5.7273665924109585,1.0
+10.684225349556428,1.0
+10.684225349556428,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1a1a" encoding="csv">0.0,0.0
+8.670383569982935,0.0
+8.670383569982935,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1b1b" encoding="csv">0.0,0.0
+7.122108711972963,0.0
+7.122108711972963,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1c1c" encoding="csv">0.0,0.0
+5.454603606561702,0.0
+5.454603606561702,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+5.236811016189987,0.0
+5.236811016189987,1.0
+10.838145109913786,1.0
+10.838145109913786,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff1d1d" encoding="csv">0.0,0.0
+5.9983872074343845,0.0
+5.9983872074343845,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1e1e" encoding="csv">0.0,0.0
+5.705610036155381,0.0
+5.705610036155381,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff1f1f" encoding="csv">0.0,0.0
+7.787414994906172,0.0
+7.787414994906172,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2020" encoding="csv">0.0,0.0
+5.093651044009624,0.0
+5.093651044009624,1.0
+11.152477050932717,1.0
+11.152477050932717,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2121" encoding="csv">0.0,0.0
+5.322298072757738,0.0
+5.322298072757738,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2222" encoding="csv">0.0,0.0
+6.056825374891671,0.0
+6.056825374891671,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2323" encoding="csv">0.0,0.0
+6.401888914667457,0.0
+6.401888914667457,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2424" encoding="csv">0.0,0.0
+8.14851811534149,0.0
+8.14851811534149,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+10.300173674293735,0.0
+10.300173674293735,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2525" encoding="csv">0.0,0.0
+6.948770665940622,0.0
+6.948770665940622,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2626" encoding="csv">0.0,0.0
+6.402353722573567,0.0
+6.402353722573567,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2727" encoding="csv">0.0,0.0
+6.570954314608683,0.0
+6.570954314608683,1.0
+10.702984089870144,1.0
+10.702984089870144,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2828" encoding="csv">0.0,0.0
+4.495907254442984,0.0
+4.495907254442984,1.0
+10.413771271421544,1.0
+10.413771271421544,2.0
+19.240658871051924,2.0
+19.240658871051924,3.0
+25.489179600096296,3.0
+25.489179600096296,4.0
+30.507472930454526,4.0
+30.507472930454526,5.0
+33.6353354737933,5.0
+33.6353354737933,6.0
+38.52691869748233,6.0
+38.52691869748233,7.0
+42.54364471176018,7.0
+42.54364471176018,8.0
+45.98330093816357,8.0
+45.98330093816357,9.0
+49.28065387654986,9.0
+49.28065387654986,10.0
+52.53078303433488,10.0
+52.53078303433488,11.0
+57.13536244464397,11.0
+57.13536244464397,12.0
+62.52312285487328,12.0
+62.52312285487328,13.0
+66.20176339801698,13.0
+66.20176339801698,14.0
+71.09317396774033,14.0
+71.09317396774033,15.0
+74.87262486465691,15.0
+74.87262486465691,16.0
+79.87626462259708,16.0
+79.87626462259708,17.0
+83.83126474572806,17.0
+83.83126474572806,18.0
+90.39363053110479,18.0
+90.39363053110479,19.0
+93.49767147445829,19.0
+93.49767147445829,20.0
+100.0,20.0
+					</series>
+					<series title="" type="l" color="0xff2929" encoding="csv">0.0,0.0
+6.476680722299999,0.0
+6.476680722299999,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2a2a" encoding="csv">0.0,0.0
+9.63431616226675,0.0
+9.63431616226675,1.0
+13.743659614510774,1.0
+13.743659614510774,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2b2b" encoding="csv">0.0,0.0
+4.6420200523564175,0.0
+4.6420200523564175,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2c2c" encoding="csv">0.0,0.0
+3.5362562222426477,0.0
+3.5362562222426477,1.0
+6.856594604586964,1.0
+6.856594604586964,2.0
+10.55167961249257,2.0
+10.55167961249257,3.0
+100.0,3.0
+					</series>
+					<series title="" type="l" color="0xff2d2d" encoding="csv">0.0,0.0
+7.713151520800838,0.0
+7.713151520800838,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+6.344315849750342,0.0
+6.344315849750342,1.0
+13.335797039925803,1.0
+13.335797039925803,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff2e2e" encoding="csv">0.0,0.0
+4.724057423448597,0.0
+4.724057423448597,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff2f2f" encoding="csv">0.0,0.0
+4.09297489389761,0.0
+4.09297489389761,1.0
+8.669086828424467,1.0
+8.669086828424467,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3030" encoding="csv">0.0,0.0
+4.5249461500956825,0.0
+4.5249461500956825,1.0
+8.359039774927696,1.0
+8.359039774927696,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3131" encoding="csv">0.0,0.0
+3.7101026527536662,0.0
+3.7101026527536662,1.0
+7.7454423652680955,1.0
+7.7454423652680955,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3232" encoding="csv">0.0,0.0
+3.4679187426460714,0.0
+3.4679187426460714,1.0
+6.635275541178069,1.0
+6.635275541178069,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3333" encoding="csv">0.0,0.0
+4.289828304819127,0.0
+4.289828304819127,1.0
+7.621532116981497,1.0
+7.621532116981497,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3434" encoding="csv">0.0,0.0
+8.303829330680546,0.0
+8.303829330680546,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3535" encoding="csv">0.0,0.0
+3.907232463253281,0.0
+3.907232463253281,1.0
+8.518800901848316,1.0
+8.518800901848316,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+6.984185453532206,0.0
+6.984185453532206,1.0
+10.794990284437091,1.0
+10.794990284437091,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3636" encoding="csv">0.0,0.0
+5.090552357314472,0.0
+5.090552357314472,1.0
+8.302545669329607,1.0
+8.302545669329607,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3737" encoding="csv">0.0,0.0
+4.196962599633417,0.0
+4.196962599633417,1.0
+8.017818129984072,1.0
+8.017818129984072,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3838" encoding="csv">0.0,0.0
+7.50657300503749,0.0
+7.50657300503749,1.0
+10.661630714036754,1.0
+10.661630714036754,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3939" encoding="csv">0.0,0.0
+7.109658887961437,0.0
+7.109658887961437,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3a3a" encoding="csv">0.0,0.0
+7.329241941127186,0.0
+7.329241941127186,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3b3b" encoding="csv">0.0,0.0
+8.04061320369583,0.0
+8.04061320369583,1.0
+11.139954306574687,1.0
+11.139954306574687,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff3c3c" encoding="csv">0.0,0.0
+6.615278387875813,0.0
+6.615278387875813,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3d3d" encoding="csv">0.0,0.0
+6.105301143306802,0.0
+6.105301143306802,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+6.6682900424220515,0.0
+6.6682900424220515,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3e3e" encoding="csv">0.0,0.0
+5.390782014332567,0.0
+5.390782014332567,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff3f3f" encoding="csv">0.0,0.0
+4.748719959825993,0.0
+4.748719959825993,1.0
+8.16435763026631,1.0
+8.16435763026631,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4040" encoding="csv">0.0,0.0
+7.340252439793875,0.0
+7.340252439793875,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4141" encoding="csv">0.0,0.0
+6.557698134925316,0.0
+6.557698134925316,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4242" encoding="csv">0.0,0.0
+6.2160245326578805,0.0
+6.2160245326578805,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4343" encoding="csv">0.0,0.0
+6.66380122746631,0.0
+6.66380122746631,1.0
+11.062470539696907,1.0
+11.062470539696907,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4444" encoding="csv">0.0,0.0
+6.69201642847356,0.0
+6.69201642847356,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4545" encoding="csv">0.0,0.0
+5.229162753587056,0.0
+5.229162753587056,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4646" encoding="csv">0.0,0.0
+8.009591049922813,0.0
+8.009591049922813,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+7.545863939625563,0.0
+7.545863939625563,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4747" encoding="csv">0.0,0.0
+6.52143260903495,0.0
+6.52143260903495,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4848" encoding="csv">0.0,0.0
+7.069271210412725,0.0
+7.069271210412725,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4949" encoding="csv">0.0,0.0
+4.199896544621542,0.0
+4.199896544621542,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4a4a" encoding="csv">0.0,0.0
+4.150176097075824,0.0
+4.150176097075824,1.0
+10.85182241037865,1.0
+10.85182241037865,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4b4b" encoding="csv">0.0,0.0
+4.092456464874634,0.0
+4.092456464874634,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4c4c" encoding="csv">0.0,0.0
+7.696358739627537,0.0
+7.696358739627537,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4d4d" encoding="csv">0.0,0.0
+7.572043728939615,0.0
+7.572043728939615,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4e4e" encoding="csv">0.0,0.0
+3.699472129892605,0.0
+3.699472129892605,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+4.291455795556443,0.0
+4.291455795556443,1.0
+8.37064055601942,1.0
+8.37064055601942,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff4f4f" encoding="csv">0.0,0.0
+6.830811891365036,0.0
+6.830811891365036,1.0
+10.343078854407599,1.0
+10.343078854407599,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5050" encoding="csv">0.0,0.0
+7.087510473685164,0.0
+7.087510473685164,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5151" encoding="csv">0.0,0.0
+4.173358273712343,0.0
+4.173358273712343,1.0
+8.640348003133003,1.0
+8.640348003133003,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5252" encoding="csv">0.0,0.0
+6.436331120506158,0.0
+6.436331120506158,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5353" encoding="csv">0.0,0.0
+4.307643498637223,0.0
+4.307643498637223,1.0
+8.957796120305549,1.0
+8.957796120305549,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5454" encoding="csv">0.0,0.0
+4.502151108012687,0.0
+4.502151108012687,1.0
+8.524037387329269,1.0
+8.524037387329269,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5555" encoding="csv">0.0,0.0
+5.827414774585392,0.0
+5.827414774585392,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5656" encoding="csv">0.0,0.0
+7.976898448765665,0.0
+7.976898448765665,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+6.414077941888495,0.0
+6.414077941888495,1.0
+100.0,1.0
+					</series>
+					<series title="" type="l" color="0xff5757" encoding="csv">0.0,0.0
+3.946121124191004,0.0
+3.946121124191004,1.0
+7.444397327700156,1.0
+7.444397327700156,2.0
+100.0,2.0
+					</series>
+					<series title="" type="l" color="0xff5858" encoding="csv">0.0,0.0
+5.372435440441047,0.0
+5.372435440441047,1.0
+8.788923579322226,1.0
+8.788923579322226,2.0
+100.0,2.0
+					</series>
+					<comment/>
+				</plot>
+			</result>
+		</query>
+	</queries>
+</nta>

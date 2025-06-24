@@ -1,0 +1,75 @@
+# Autonomous Pest Control Drone Use Case: UPPAAL Model
+
+This artifact provides the UPPAAL model for an autonomous pest control drone, demonstrating how UPPAAL's strategy synthesis can be used to verify critical mission requirements alongside "softer" social compliance rules. The model explores the trade-offs between mission efficiency and adherence to environmental or social norms.
+
+## 1. Overview of the Use Case
+
+This model simulates a scenario where an autonomous drone is tasked with a pest-spraying mission. The drone must complete a set number of spraying cycles while managing its power consumption. The complexity arises from an environmental constraint: an organic farm is located nearby, and the drone should avoid spraying in its vicinity.
+
+The system consists of two primary automata:
+
+- **Drone**: Models the autonomous drone with states for Idle, Cruising, Spraying, and a special CruisingNearFarm state. It manages its power level and tracks sprayCycles to determine mission completion.
+- **SocialComplianceObserver**: An observer automaton that monitors the drone's behavior. It specifically checks if the drone sprays pesticides while near the organic farm and transitions to an Error state if this social norm is violated.
+
+## 2. Modeled Requirements: Mission Success and Social Norms
+
+The model distinguishes between hard mission-critical requirements and softer, desirable social norms. This allows for the analysis of different operational strategies.
+
+### 2.1. Critical Mission Requirements (Hard Constraints)
+
+These are properties the system must satisfy to successfully complete its primary objective.
+
+- **Mission Completion**: The drone must perform a predefined number of spray cycles (MISSION_CYCLES = 5) and then transition to the Finished state.
+  - Strategy Goal: `A<> a.Finished`
+- **Power Management**: The drone must complete its mission before its power drops below the LOW_POWER_THRESHOLD. Failing to do so results in an Error_LowPower state, signifying mission failure. This is implicitly verified by ensuring the Finished state is reachable.
+
+### 2.2. Social Compliance Norms (Soft Constraints)
+
+These norms govern the drone's interaction with its environment, ensuring it operates in a socially and environmentally responsible manner.
+
+- **No-Spray Zone Compliance**: The drone is obligated to not spray pesticides when it is in the CruisingNearFarm location. Violating this norm is not a critical failure in the drone's logic but is caught by the SocialComplianceObserver, which enters an Error state.
+  - Observer-Monitored Property: The SocialComplianceObserver will transition to its Error state if the drone sends an isSprayingNearFarm signal.
+  - Strategy Goal: `A<> (!obs.Error && a.Finished)`
+- **Contextual Override**: The global declaration includes a pest_emergency boolean. This is designed to allow the social norm to be overridden in critical situations, showcasing how such rules can be made flexible. (Note: The provided model strategies will adhere to the norm unless an emergency is explicitly modeled).
+
+## 3. Artifact Structure
+
+The artifact consists of a single UPPAAL model file:
+
+- `UniqueDrone.xml`: The UPPAAL model file containing the automata for the drone and the social norm observer. The verification queries are embedded within this file.
+- `README.md`: This file.
+
+## 4. Prerequisites
+
+- **UPPAAL IDE** (version 4.1 or newer): A tool suite for modeling, simulation, and verification of real-time systems. It can be downloaded for free from [www.uppaal.org](http://www.uppaal.org). The model uses features from the SMC (Statistical Model Checking) branch of UPPAAL.
+
+## 5. How to Run the Artifact
+
+### Step A: Simulating the System's Behavior
+
+1. Launch the UPPAAL IDE.
+2. Go to File -> Open System... and select the `UniqueDrone.xml` file.
+3. Navigate to the Simulator tab.
+4. In the "Traces" control panel, click the Start button to select an initial trace.
+5. You can step through the simulation manually by clicking on enabled transitions or run a random simulation by clicking the "Random" button.
+6. To observe social compliance: When the Drone is in the CruisingNearFarm location, notice that it has a choice: it can spray (violating the norm) or wait until its canLeave clock allows it to exit the area. A socially compliant strategy will force the drone to wait, avoiding the transition that triggers the SocialComplianceObserver.Error state.
+
+### Step B: Verifying the Properties and Analyzing Strategies
+
+1. With the system loaded, navigate to the Verifier tab.
+2. The queries are pre-loaded from the `UniqueDrone.xml` file. They define two key strategies:
+   - **Finish**: A strategy to complete the mission, ignoring the social norm.
+   - **SociallyCompliant**: A strategy to complete the mission without violating the no-spray zone norm.
+3. Select the query `E[<=200; 100] (min: power)` under Finish and click the Check button. This calculates the expected minimum power level when the drone only cares about finishing its mission.
+4. Next, select the query `E[<=200; 100] (min: power)` under SociallyCompliant and click Check. This calculates the expected minimum power level when the drone must also be socially compliant.
+
+**Expected Outcome**: The verification results will demonstrate a quantifiable trade-off between efficiency and social compliance.
+
+- The **Finish** strategy will show a higher expected minimum power level (Result: ~18.8). The drone can operate more efficiently as it is free to spray whenever possible.
+- The **SociallyCompliant** strategy will show a lower expected minimum power level (Result: ~13.0). To adhere to the norm, the drone must spend more time waiting in the CruisingNearFarm state, consuming cruising power without making mission progress. This forces it to operate with a smaller power safety margin.
+
+This result powerfully demonstrates that social compliance has a "cost," which our framework allows us to quantify and analyze.
+
+## 6. Contact
+
+For any questions regarding this artifact, please contact [Your Name] at [your.email@university.com].

@@ -1,0 +1,70 @@
+# Autonomous Drone and Human Collaboration Use Case: UPPAAL Model
+
+## Overview
+This artifact provides an UPPAAL model for an autonomous drone designed to collaborate with a human in a shared environment. The model ensures the drone's behavior adheres to social norms and safety rules for safe and predictable interaction. 
+### Scenario
+This model simulates a scenario where an autonomous drone performs a "cutting" task across several locations (plants position) in a shared environment with a human. The drone must complete its mission while dynamically adjusting its behavior based on the human's position and commands.
+
+- **Task**: Drone performs a cutting task across several locations.
+- **Human Interaction**: A human collaborator moves and issues commands.
+- **Focus**: Social compliance and technical correctness.
+
+## System Components
+- **Drone**: States for moving, signaling, cutting, and responding to commands.
+- **Human**: Moves and issues halt commands.
+- **Observer Automata**: Monitors verifying adherence to social and safety rules.
+
+## Modeled Requirements: Social and Safety Norms
+
+### Rule 1: Prohibition on Cutting Near a Human
+- **Norm**: Drone must not cut when human is at the same location.
+- **Importance**: Ensures physical safety.
+- **Pattern**: Prohibition Observer Pattern.
+- **Verification**: `A[] !obs.ErrorState`.
+
+### Rule 2: Prohibition of Intimidating Speed
+- **Norm**: Drone must reduce speed when approaching human.
+- **Importance**: Ensures psychological comfort.
+- **Pattern**: Prohibition Observer Pattern.
+- **Verification**: `A[] !obs4.ErrorState`.
+
+### Rule 3: Mandatory Signaling on Resuming Task
+- **Norm**: Drone must signal before resuming task after a halt.
+- **Importance**: Ensures predictability.
+- **Pattern**: Timed Obligation Observer Pattern.
+- **Verification**: `A[] !obs2.ErrorState`.
+
+### Rule 4: Graceful Response to Halt Commands
+- **Norm**: Drone must wait before resuming after a halt command.
+- **Importance**: Ensures controlled interaction.
+- **Pattern**: Timed Prohibition Pattern.
+- **Verification**: `A[] !obs3.ErrorState`.
+
+## Artifact Structure
+- **File**: `HumanCollaboration.xml` containing the UPPAAL model.
+
+## Prerequisites
+- UPPAAL IDE (version 4.1 or newer).
+
+## How to Run the Artifact
+
+### Step A: Simulating the System's Behavior
+1. Launch UPPAAL IDE.
+2. Open `HumanCollaboration.xml`.
+3. Navigate to the Simulator tab.
+4. Step through or run a random simulation.
+5. Observe social norms in action.
+
+### Step B: Verifying the Properties
+1. Navigate to the Verifier tab.
+2. Check the pre-loaded queries:
+   - `A[] !obs.ErrorState`
+   - `A[] !obs4.ErrorState`
+   - `A[] !obs2.ErrorState`
+   - `A[] !obs3.ErrorState`
+3. Click the Check button for each property.
+
+**Expected Outcome**: All properties are satisfied, confirming compliance with social and safety rules.
+
+## Contact
+For questions, contact Name Lastname at {name.last_name}@university.com.
